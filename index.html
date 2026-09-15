@@ -3960,6 +3960,50 @@ html.nx-sb-off .nx-chrome .nxh-sb{ display:none; }
    bar included, is automatically clear of the chrome. */
 .nexus-shipping{ top:var(--nx-hd-h) !important; left:var(--nx-sb-w) !important;
                  right:0 !important; bottom:0 !important; inset:auto !important; }
+
+.nxh-lvl{padding:16px}
+.nxh-lvl .lvl-top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.nxh-lvl .lvl-badge{width:42px;height:42px;flex:none;border-radius:11px;display:grid;place-items:center;
+  font:800 18px var(--nx-sans);color:#06231F;background:linear-gradient(135deg,#35D0C0,#2563EB)}
+.nxh-lvl .lvl-badge.bei{background:linear-gradient(135deg,#FBBF24,#F87171,#A78BFA);
+  box-shadow:0 0 16px rgba(251,191,36,.45)}
+.nxh-lvl .lvl-rank{display:block;font:800 14px var(--nx-sans);letter-spacing:.05em;text-transform:uppercase;color:#0D9488}
+.nxh-lvl .lvl-rank.bei{background:linear-gradient(90deg,#D97706,#DC2626,#7C3AED);
+  -webkit-background-clip:text;background-clip:text;color:transparent}
+.nxh-lvl .lvl-top small{display:block;font-size:11.5px;color:var(--nx-muted);margin-top:2px}
+.nxh-lvl .lvl-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px 0;
+  border-top:1px solid var(--nx-line);border-bottom:1px solid var(--nx-line);margin-bottom:12px}
+.nxh-lvl .lvl-row div{text-align:center}
+.nxh-lvl .lvl-row b{display:block;font:700 17px var(--nx-sans)}
+.nxh-lvl .lvl-row span{font-size:10px;color:var(--nx-muted)}
+.nxh-lvl .lvl-empty{font-size:12.5px;color:var(--nx-muted);padding:10px 0 14px;line-height:1.5}
+.nxh-lvl .nxh-primary{width:100%}
+
+/* ── Every module surface sits inside the chrome ───────────────────────
+   The header is fixed at the top and the sidebar down the left, so anything
+   that fills the viewport must be offset by both or its own header ends up
+   underneath them. Previously this was done with class selectors and a few
+   surfaces were simply missed — Listing Health, the store-wide audit and the
+   drawer among them. Listing them by id as well removes the guesswork:
+   duplicating the offset where a class rule already covers it costs nothing,
+   missing one costs a broken page. */
+/* #nexusDrawer is deliberately absent: it is a slide-out panel that is meant
+   to sit ABOVE the chrome, not inside it, and framing it would fight the
+   modal rule that lifts it. */
+#hazWrap, #nexusCommand, #nexusPricing,
+#nexusShipping, #nexusStoreWide, #pcWrap{
+  top:var(--nx-hd-h) !important;
+  left:var(--nx-sb-w) !important;
+  right:0 !important;
+  bottom:0 !important;
+  inset:auto !important;
+}
+/* Their inner scroll areas need to know the height changed, or the last rows
+   sit below the fold with no way to reach them. */
+#hazWrap, #nexusCommand, #nexusPricing, #nexusShipping,
+#nexusStoreWide, #pcWrap{
+  max-height:calc(100vh - var(--nx-hd-h));
+}
 </style>
 <style id="nx-phantom-css">
 /* z-index 60 put this UNDER every other module (they sit at 9200-10200), so
@@ -4192,6 +4236,25 @@ html.nx-sb-off .nx-chrome .nxh-sb{ display:none; }
   .xp-levelup b{transition:none;transform:none}
   #xpBar .xp-track i{transition:none}
 }
+
+#xpBar .xp-rank{font-weight:800;color:#35D0C0;opacity:1;letter-spacing:.06em;text-transform:uppercase}
+#xpBar .xp-rank.bei{background:linear-gradient(90deg,#FBBF24,#F87171,#A78BFA,#35D0C0);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  background-size:300% 100%;animation:beiShift 4s linear infinite}
+#xpBar .xp-lvl.bei{background:linear-gradient(135deg,#FBBF24,#F87171,#A78BFA);
+  box-shadow:0 0 0 2px rgba(251,191,36,.35), 0 0 18px rgba(251,191,36,.45)}
+@keyframes beiShift{0%{background-position:0% 50%}100%{background-position:300% 50%}}
+.xp-levelup.rank small{display:block;text-align:center;font:800 11px var(--sans);letter-spacing:.3em;
+  color:#35D0C0;margin-bottom:6px;opacity:.9}
+.xp-levelup.rank b{font-size:46px}
+.xp-levelup.bei{background:radial-gradient(circle at 50% 45%,rgba(251,191,36,.28),transparent 60%)}
+.xp-levelup.bei b{background:linear-gradient(135deg,#FBBF24,#F87171,#A78BFA,#35D0C0);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  background-size:300% 100%;animation:beiShift 2.5s linear infinite;font-size:64px}
+.xp-levelup.bei small{color:#FBBF24}
+@media (prefers-reduced-motion:reduce){
+  #xpBar .xp-rank.bei,.xp-levelup.bei b{animation:none}
+}
 </style>
 <style id="nx-stats-css">
 #lsStats{margin-top:8px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.03);
@@ -4203,6 +4266,7 @@ html.nx-sb-off .nx-chrome .nxh-sb{ display:none; }
   background:transparent;border:0;color:inherit;opacity:.45;cursor:pointer;padding:3px 6px;border-radius:5px}
 #lsStats .ls-scope button.on{opacity:1;background:rgba(53,208,192,.18);color:#35D0C0}
 #lsStats .ls-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+#lsStats .ls-grid.five{grid-template-columns:repeat(5,1fr)}
 #lsStats .ls-stat{text-align:center}
 #lsStats .ls-stat b{display:block;font:700 16px var(--sans);line-height:1.1}
 #lsStats .ls-stat span{font-size:9.5px;opacity:.6;letter-spacing:.03em}
@@ -4213,6 +4277,99 @@ html.nx-sb-off .nx-chrome .nxh-sb{ display:none; }
 #lsStats .ls-bar span{font-size:8.5px;opacity:.5;text-align:center;margin-top:3px}
 #lsStats .ls-foot{font-size:10px;opacity:.6;line-height:1.5}
 @media (prefers-reduced-motion:reduce){ #lsStats .ls-bar i{transition:none} }
+</style>
+<style id="nx-rankskin-css">
+/* ── Rank skins ────────────────────────────────────────────────────────
+   The board earns its looks. Tier 1 is deliberately plain — flat panels, no
+   accent — so later tiers read as an upgrade rather than a reskin. What
+   changes is material quality: edges gain definition, then depth, then a
+   light source, and only at the very top does anything move. "Professionally
+   cooler", not a slot machine: nothing here reduces contrast or distracts
+   from the fields you are typing into. */
+
+/* 3 — Scanner: the composer gets a defined edge */
+html[data-rank="3"] #wbComposer,
+html[data-rank="4"] #wbComposer{
+  border-color:rgba(53,208,192,.30);
+}
+
+/* 4 — Sharp: the queue header picks up an accent rule */
+html[data-rank="4"] .wb-pnl .wb-hd,
+html[data-rank="5"] .wb-pnl .wb-hd{
+  border-bottom:1px solid rgba(53,208,192,.32);
+}
+
+/* 5 — Lister: panels lift off the background */
+html[data-rank="5"] .wb-pnl,
+html[data-rank="6"] .wb-pnl{
+  box-shadow:0 1px 0 rgba(255,255,255,.05) inset, 0 8px 22px rgba(0,0,0,.28);
+}
+
+/* 6 — Bench Veteran: a top light source across the panels */
+html[data-rank="6"] .wb-pnl::before,
+html[data-rank="7"] .wb-pnl::before,
+html[data-rank="8"] .wb-pnl::before,
+html[data-rank="9"] .wb-pnl::before,
+html[data-rank="10"] .wb-pnl::before{
+  content:"";position:absolute;left:0;right:0;top:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(53,208,192,.55),transparent);
+}
+html[data-rank="6"] .wb-pnl,html[data-rank="7"] .wb-pnl,
+html[data-rank="8"] .wb-pnl,html[data-rank="9"] .wb-pnl,
+html[data-rank="10"] .wb-pnl{ position:relative; }
+
+/* 7 — Batch Slayer: deeper panels, brighter numerals */
+html[data-rank="7"] .wb-pnl,
+html[data-rank="8"] .wb-pnl{
+  background:linear-gradient(180deg,rgba(53,208,192,.045),transparent 42%),var(--wb-pnl,#141922);
+  box-shadow:0 10px 30px rgba(0,0,0,.34);
+}
+html[data-rank="7"] .wb-n,html[data-rank="8"] .wb-n,
+html[data-rank="9"] .wb-n,html[data-rank="10"] .wb-n{
+  color:#35D0C0;text-shadow:0 0 12px rgba(53,208,192,.45);
+}
+
+/* 8 — Flawless: the XP bar becomes a feature rather than a strip */
+html[data-rank="8"] #xpBar,html[data-rank="9"] #xpBar{
+  background:linear-gradient(135deg,rgba(53,208,192,.10),rgba(37,99,235,.08));
+  border-color:rgba(53,208,192,.30);
+}
+
+/* 9 — Untouchable: a quiet gold edge, the first non-teal accent */
+html[data-rank="9"] .wb-pnl{
+  box-shadow:0 0 0 1px rgba(251,191,36,.16), 0 12px 34px rgba(0,0,0,.38);
+}
+html[data-rank="9"] #xpBar{ border-color:rgba(251,191,36,.34); }
+
+/* 10 — BEI: the only tier where anything moves, and it moves slowly */
+html[data-rank="10"] .wb-pnl{
+  background:linear-gradient(180deg,rgba(251,191,36,.05),transparent 46%),var(--wb-pnl,#141922);
+  box-shadow:0 0 0 1px rgba(251,191,36,.26), 0 14px 40px rgba(0,0,0,.44);
+}
+html[data-rank="10"] .wb-pnl::before{
+  background:linear-gradient(90deg,transparent,#FBBF24,#F87171,#A78BFA,#35D0C0,transparent);
+  background-size:200% 100%;animation:beiEdge 9s linear infinite;
+}
+html[data-rank="10"] #xpBar{
+  background:linear-gradient(135deg,rgba(251,191,36,.12),rgba(167,139,250,.10));
+  border-color:rgba(251,191,36,.40);
+}
+html[data-rank="10"] #wbComposer{ border-color:rgba(251,191,36,.34); }
+@keyframes beiEdge{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+
+/* A small plate showing the rank, from Lister up. */
+html[data-rank="5"] .wb-grid::after,html[data-rank="6"] .wb-grid::after,
+html[data-rank="7"] .wb-grid::after,html[data-rank="8"] .wb-grid::after,
+html[data-rank="9"] .wb-grid::after,html[data-rank="10"] .wb-grid::after{
+  content:attr(data-rank-label);position:absolute;right:10px;bottom:6px;
+  font:800 9px var(--sans);letter-spacing:.28em;text-transform:uppercase;
+  color:rgba(53,208,192,.5);pointer-events:none;
+}
+html[data-rank="10"] .wb-grid::after{ color:rgba(251,191,36,.65); }
+
+@media (prefers-reduced-motion:reduce){
+  html[data-rank="10"] .wb-pnl::before{ animation:none }
+}
 </style>
 </head><body>
 <div id="nxChrome" class="nx-chrome">
@@ -4374,6 +4531,7 @@ html.nx-sb-off .nx-chrome .nxh-sb{ display:none; }
         <li><button type="button" data-ask="How do I pack in physical order?">“How do I pack in physical order?”</button></li>
       </ul>
     </section>
+    <section class="nxh-card nxh-lvl" id="homeLvl"></section>
     <section class="nxh-card nxh-health">
       <div class="lab">Overall listing health</div>
       <div class="big" id="nxhHealthBig">—</div>
@@ -24072,10 +24230,14 @@ html:not(.nx-light){
   /* On the board the toolbar moves to the BOTTOM: the composer lives down
      there, so who/batch/page belong in the same band as the hands. Driven by
      a body class so it reverts cleanly for A-D. */
-  body.wb-on #wanToolbar{top:auto !important;bottom:0 !important;
+  body.wb-on #wanToolbar{top:auto !important;bottom:0 !important;left:var(--nx-sb-w,0px) !important;
     border-bottom:none;border-top:1px solid rgba(255,255,255,.07);
     box-shadow:0 -2px 20px rgba(0,0,0,.4)}
-  body.wb-on #wanboardPage.on{top:0;bottom:52px}
+  /* top:0 predates the persistent app header. With a 60px header fixed above
+     everything, pinning the board to 0 tucks its first row — the XP bar and
+     the composer's top edge — underneath it. Offset by the header instead,
+     and by the sidebar so the 250/1fr/250 grid gets the width it needs. */
+  body.wb-on #wanboardPage.on{top:var(--nx-hd-h,60px);left:var(--nx-sb-w,0px);bottom:52px}
   #wanboardPage{display:none}
   /* FOUND VIA REAL COMPUTED-STYLE INSPECTION: redefining a custom property
      does not retroactively change an ALREADY-COMPUTED color value. body sets
@@ -24087,7 +24249,7 @@ html:not(.nx-light){
      of the variable override above. Setting color explicitly here is what
      actually fixes it, for every borrowed element at once. */
   #wanboardPage.on{display:flex !important;flex-direction:column;gap:1px;
-    position:fixed;top:52px;left:0;right:0;bottom:0;z-index:180;
+    position:fixed;top:calc(var(--nx-hd-h,60px) + 52px);left:var(--nx-sb-w,0px);right:0;bottom:0;z-index:180;
     background:var(--wb-line);overflow:hidden;color:var(--ink)}
   .wb-grid{display:grid;grid-template-columns:minmax(0,250px) minmax(0,1fr) minmax(0,250px);
     gap:1px;background:var(--wb-line);flex:1;min-height:0}
@@ -37089,6 +37251,37 @@ function shovoRenderHints(q){
   // Levels get progressively longer so the early ones come quickly and later
   // ones actually mean something.
   function needFor(l){ return Math.round(80 * Math.pow(l,1.35)); }
+
+  // ── Ranks ───────────────────────────────────────────────────────────
+  // Levels tick up steadily; ranks are the milestones worth bragging about, so
+  // they are spaced far enough apart that reaching one means something. The
+  // top rank is BEI — the ceiling, and deliberately hard to reach: it needs a
+  // clean streak as well as the level, so nobody arrives there by grinding
+  // sloppy listings.
+  var RANKS=[
+    {at:1,  name:'Fresh Meat',    tag:'Everyone starts here.'},
+    {at:3,  name:'Scanner',       tag:'You know where the bins are.'},
+    {at:5,  name:'Lister',        tag:'Proper work, properly done.'},
+    {at:8,  name:'Sharp',         tag:'Few flags, good titles.'},
+    {at:12, name:'Bench Veteran', tag:'You have seen some listings.'},
+    {at:17, name:'Batch Slayer',  tag:'Whole RTLs disappear around you.'},
+    {at:23, name:'Flawless',      tag:'Clean pushes, every time.'},
+    {at:30, name:'The Machine',   tag:'Do you even stop?'},
+    {at:40, name:'Untouchable',   tag:'Nobody is catching you.'},
+    {at:55, name:'BEI',           tag:'The ceiling. Nothing above this.', bei:true, needStreak:15}
+  ];
+  function rankFor(lvl, best){
+    var r=RANKS[0];
+    for(var i=0;i<RANKS.length;i++){
+      var R=RANKS[i];
+      if(lvl>=R.at && (!R.needStreak || (best||0)>=R.needStreak)) r=R;
+    }
+    return r;
+  }
+  function nextRank(lvl){
+    for(var i=0;i<RANKS.length;i++) if(RANKS[i].at>lvl) return RANKS[i];
+    return null;
+  }
   function levelOf(xp){ var l=1,acc=0; while(acc+needFor(l)<=xp){ acc+=needFor(l); l++; } return {lvl:l, into:xp-acc, need:needFor(l)}; }
 
   var lastPush=Date.now();
@@ -37110,26 +37303,44 @@ function shovoRenderHints(q){
     var gained=Math.max(1, Math.round((base+speed)*mult));
 
     var before=levelOf(S.xp).lvl;
+    var rankBefore=rankFor(before, S.best).name;
     S.xp+=gained; S.today+=gained;
     var after=levelOf(S.xp).lvl;
+    var rankAfter=rankFor(after, S.best);
     save(); render();
     pop(gained, clean, secs);
-    if(after>before) levelUp(after);
+    if(rankAfter.name!==rankBefore) rankUp(rankAfter);
+    else if(after>before) levelUp(after);
     return gained;
   }
 
   // ── the bar ──
   function el(){ return document.getElementById('xpBar'); }
   function render(){
-    var host=el(); if(!host) return;
     var L=levelOf(S.xp), pct=Math.round(L.into/L.need*100);
+    var R=rankFor(L.lvl, S.best), NR=nextRank(L.lvl);
+    // Publish the rank tier on <html> so the board can dress itself up as the
+    // lister climbs. This runs BEFORE the bar check on purpose: the skin should
+    // be applied whether or not the XP bar happens to be rendered, otherwise the
+    // board only looks right after you have opened it once.
+    try{
+      var tier=RANKS.indexOf(R)+1;
+      document.documentElement.setAttribute('data-rank', tier);
+      document.documentElement.setAttribute('data-rank-name', R.name);
+      var g=document.querySelector('.wb-grid');
+      if(g) g.setAttribute('data-rank-label', R.name);
+    }catch(e){}
+    var host=el(); if(!host) return;
     var avg=S.times.length? Math.round(S.times.reduce(function(a,b){return a+b;},0)/S.times.length) : 0;
     host.innerHTML=
-      '<div class="xp-lvl" title="Level '+L.lvl+'">'+L.lvl+'</div>'+
+      '<div class="xp-lvl'+(R.bei?' bei':'')+'" title="Level '+L.lvl+' \u2014 '+R.name+'">'+L.lvl+'</div>'+
       '<div class="xp-mid">'+
         '<div class="xp-track"><i style="width:'+pct+'%"></i></div>'+
         '<div class="xp-meta">'+
+          '<span class="xp-rank'+(R.bei?' bei':'')+'" title="'+R.tag+'">'+R.name+'</span>'+
           '<span>'+L.into+' / '+L.need+' XP</span>'+
+          (NR? '<span title="'+NR.tag+'">next: '+NR.name+' at lvl '+NR.at+
+               (NR.needStreak? ' + '+NR.needStreak+' streak':'')+'</span>' : '')+
           '<span class="xp-streak'+(S.streak>=3?' hot':'')+'" title="Clean pushes in a row. A flagged push resets it.">'+
             (S.streak>0? '\u25b2 '+S.streak+' streak' : 'no streak')+'</span>'+
           (avg? '<span title="Average time per push">~'+(avg<60? avg+'s' : Math.round(avg/60)+'m')+'/item</span>' : '')+
@@ -37146,6 +37357,14 @@ function shovoRenderHints(q){
     d.textContent=(clean?'+':'')+n+' XP'+(clean&&secs<=90?'  fast!':'')+(clean?'':'  flagged');
     host.appendChild(d);
     setTimeout(function(){ d.remove(); }, 1500);
+  }
+  function rankUp(R){
+    var v=document.createElement('div');
+    v.className='xp-levelup rank'+(R.bei?' bei':'');
+    v.innerHTML='<small>NEW RANK</small><b>'+R.name+'</b><span>'+R.tag+'</span>';
+    document.body.appendChild(v);
+    setTimeout(function(){ v.classList.add('go'); },20);
+    setTimeout(function(){ v.remove(); }, R.bei?4200:3200);
   }
   function levelUp(lvl){
     var v=document.createElement('div');
@@ -37202,9 +37421,29 @@ function shovoRenderHints(q){
   //     cycle  = push -> push                (work + whatever happened between)
   // The difference between them is the gap, and seeing them apart tells you
   // whether an item was genuinely slow or you were just interrupted.
+  var researchMs=0;     // time this tab was hidden while an item was open
+  var hiddenSince=null;
+  var lastActive=null;  // last keystroke or click in this tab
+
+  // Research IS work. Looking up a model number, checking comps, verifying a
+  // spec in another tab is the hard part of a listing, and counting it as dead
+  // time would punish exactly the care that prevents bad listings.
+  //
+  // The problem is that "researching in another tab" and "went to lunch" look
+  // identical from here — no keystrokes either way. The usable signal is tab
+  // visibility:
+  //   · tab HIDDEN while an item is open  -> almost certainly research
+  //   · tab VISIBLE but untouched for ages -> almost certainly stepped away
+  // Neither is perfect, but it separates the two cases far better than
+  // treating every silence the same. Research is capped per item so a tab left
+  // open overnight can't turn into a 9-hour "research" figure.
+  var RESEARCH_CAP=20*60*1000;   // per item
+  var IDLE_VISIBLE=8*60*1000;    // visible and untouched this long = away
+
   (function watchComposer(){
     function touch(){
-      if(startedAt===null) startedAt=Date.now();
+      if(startedAt===null){ startedAt=Date.now(); researchMs=0; }
+      lastActive=Date.now();
     }
     function bind(){
       var box=document.getElementById('wbComposer');
@@ -37215,6 +37454,19 @@ function shovoRenderHints(q){
         box.addEventListener(ev, touch, true);
       });
     }
+    // Any activity anywhere in Nexus counts as still being at the bench.
+    ['keydown','mousedown'].forEach(function(ev){
+      document.addEventListener(ev, function(){ if(startedAt!==null) lastActive=Date.now(); }, true);
+    });
+    document.addEventListener('visibilitychange', function(){
+      if(startedAt===null) return;              // nothing in progress; ignore
+      if(document.hidden){ hiddenSince=Date.now(); }
+      else if(hiddenSince){
+        researchMs += Math.min(Date.now()-hiddenSince, RESEARCH_CAP);
+        hiddenSince=null;
+        lastActive=Date.now();
+      }
+    });
     if(document.readyState!=='loading') bind();
     else document.addEventListener('DOMContentLoaded', bind);
   })();
@@ -37222,13 +37474,20 @@ function shovoRenderHints(q){
   function record(state, entry){
     var now=Date.now();
     var secs=lastAt? Math.round((now-lastAt)/1000) : null;
-    var hands=startedAt? Math.round((now-startedAt)/1000) : null;
-    startedAt=null;      // next touch starts the next item's clock
+    // Close any open research window before measuring.
+    if(hiddenSince){ researchMs += Math.min(now-hiddenSince, RESEARCH_CAP); hiddenSince=null; }
+    var rawHands = startedAt? (now-startedAt) : null;
+    // Time sat visible and untouched isn't work — take it off.
+    var idle = (lastActive && now-lastActive > IDLE_VISIBLE) ? (now-lastActive) : 0;
+    var hands = rawHands!=null ? Math.max(1, Math.round((rawHands-idle)/1000)) : null;
+    var research = Math.round(researchMs/1000);
+    startedAt=null; researchMs=0; hiddenSince=null; lastActive=null;
     lastAt=now;
     var rec={
       t: now,
       s: secs,                                   // cycle: seconds since the previous push
-      h: hands,                                  // hands-on: first touch -> push
+      h: hands,                                  // hands-on: first touch -> push, idle removed
+      r: research,                               // of which spent researching in another tab
       br: secs!=null && secs>IDLE_CUTOFF,        // was this a break rather than work
       st: state,
       sku: (entry && (entry.website_sku||entry.sku)) || '',
@@ -37255,7 +37514,8 @@ function shovoRenderHints(q){
     var work=rows.filter(function(r){ return r.s!=null && !r.br; }).map(function(r){ return r.s; });
     // Hands-on times need no break filter — the clock only runs while the
     // composer is being used, so a lunch break simply never starts it.
-    var hands=rows.filter(function(r){ return r.h!=null && r.h>0 && r.h<IDLE_CUTOFF; }).map(function(r){ return r.h; });
+    var hands=rows.filter(function(r){ return r.h!=null && r.h>0; }).map(function(r){ return r.h; });
+    var research=rows.filter(function(r){ return r.r>0; }).map(function(r){ return r.r; });
     var clean=rows.filter(function(r){ return r.st==='pushed'; }).length;
     var breaks=rows.filter(function(r){ return r.br; }).length;
     return {
@@ -37263,6 +37523,9 @@ function shovoRenderHints(q){
       median: med(work),
       hands: med(hands),
       handsN: hands.length,
+      research: research.reduce(function(a,b){return a+b;},0),
+      researchMed: med(research),
+      researchN: research.length,
       fastestHands: hands.length? Math.min.apply(null,hands) : 0,
       gap: (med(work)&&med(hands))? Math.max(0, med(work)-med(hands)) : 0,
       fastest: work.length? Math.min.apply(null,work) : 0,
@@ -37304,10 +37567,11 @@ function shovoRenderHints(q){
           }).join('')+
         '</div>'+
       '</div>'+
-      '<div class="ls-grid">'+
+      '<div class="ls-grid five">'+
         '<div class="ls-stat"><b>'+S.n+'</b><span>listings</span></div>'+
         '<div class="ls-stat" title="Median hands-on time: first keystroke in the composer through to the push. This is the item itself, with the waiting-around taken out."><b>'+F(S.hands||S.median)+'</b><span>working on it</span></div>'+
         '<div class="ls-stat"><b>'+(S.perHour||'—')+'</b><span>per hour</span></div>'+
+        '<div class="ls-stat" title="Median time spent looking things up in another tab while an item was open \u2014 model numbers, comps, spec checks. This is work, not idle."><b>'+(S.researchN? F(S.researchMed) : '\u2014')+'</b><span>researching</span></div>'+
         '<div class="ls-stat"><b>'+S.cleanPct+'%</b><span>clean</span></div>'+
       '</div>'+
       '<div class="ls-bars">'+
@@ -37317,6 +37581,7 @@ function shovoRenderHints(q){
         }).join('')+
       '</div>'+
       '<div class="ls-foot">'+
+        (S.researchN? S.researchN+' of '+S.n+' needed a lookup · '+F(S.research)+' researching in total<br>' : '')+
         (S.handsN? 'hands-on '+F(S.hands)+' · start-to-start '+F(S.median)+
           (S.gap? ' · '+F(S.gap)+' between items' : '')+'<br>' : '')+
         'fastest '+F(S.fastestHands||S.fastest)+' · slowest '+F(S.slowest)+
@@ -37334,6 +37599,39 @@ function shovoRenderHints(q){
   };
   if(document.readyState!=='loading') window.sygStatsRender();
   else document.addEventListener('DOMContentLoaded', window.sygStatsRender);
+})();
+
+// ── Level + pace on the home dashboard ────────────────────────────────
+// The XP bar and pace panel live on the Wan Board, which means a lister only
+// sees their own numbers while actively listing. This mirrors them onto the
+// home so progress is visible the moment you open Nexus.
+(function(){
+  function paint(){
+    var host=document.getElementById('homeLvl');
+    if(!host || !window.sygXP) return;
+    var x=window.sygXP.stats();
+    var rank=document.documentElement.getAttribute('data-rank-name')||'';
+    var tier=document.documentElement.getAttribute('data-rank')||'1';
+    var S=(window.sygStats? window.sygStats.summarise('today') : null);
+    var F=(window.sygStats? window.sygStats.fmt : function(v){return v+'s';});
+    host.innerHTML=
+      '<div class="lvl-top">'+
+        '<span class="lvl-badge'+(tier==='10'?' bei':'')+'">'+x.lvl+'</span>'+
+        '<div><b class="lvl-rank'+(tier==='10'?' bei':'')+'">'+(rank||'Fresh Meat')+'</b>'+
+        '<small>'+(x.today? x.today+' XP today':'no XP yet today')+
+        (x.streak? ' · '+x.streak+' streak':'')+'</small></div>'+
+      '</div>'+
+      (S && S.n ? '<div class="lvl-row">'+
+        '<div><b>'+S.n+'</b><span>listed today</span></div>'+
+        '<div><b>'+F(S.hands||S.median)+'</b><span>each</span></div>'+
+        '<div><b>'+S.cleanPct+'%</b><span>clean</span></div>'+
+      '</div>' : '<div class="lvl-empty">Push a listing to start today\u2019s numbers.</div>')+
+      '<button type="button" class="nxh-primary" data-module="wan">Open Wan Board</button>';
+  }
+  window.sygHomeLvl=paint;
+  if(document.readyState!=='loading') paint();
+  else document.addEventListener('DOMContentLoaded', paint);
+  setInterval(paint, 5000);
 })();
 
 // ── Wan Board keyboard shortcuts ──────────────────────────────────────
