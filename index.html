@@ -37191,15 +37191,44 @@ function shovoRenderHints(q){
     if(LOG.length>2000) LOG=LOG.slice(-2000);
     try{ localStorage.setItem(KEY, JSON.stringify(LOG)); }catch(e){}
   }
-  var lastAt=null;
+  var lastAt=null;      // when the previous item was pushed
+  var startedAt=null;   // when hands first touched the composer for THIS item
+
+  // Push-to-push measures the whole cycle, which includes the dead time after
+  // you finish one item and before you start the next. That is useful, but it
+  // is not "how long the item took". The first touch of the composer after a
+  // push is the honest start signal, so we track both:
+  //     hands  = first keystroke -> push     (actual work on the item)
+  //     cycle  = push -> push                (work + whatever happened between)
+  // The difference between them is the gap, and seeing them apart tells you
+  // whether an item was genuinely slow or you were just interrupted.
+  (function watchComposer(){
+    function touch(){
+      if(startedAt===null) startedAt=Date.now();
+    }
+    function bind(){
+      var box=document.getElementById('wbComposer');
+      if(!box){ return setTimeout(bind, 800); }
+      if(box._sygTouch) return;
+      box._sygTouch=true;
+      ['input','keydown','paste','focusin'].forEach(function(ev){
+        box.addEventListener(ev, touch, true);
+      });
+    }
+    if(document.readyState!=='loading') bind();
+    else document.addEventListener('DOMContentLoaded', bind);
+  })();
 
   function record(state, entry){
     var now=Date.now();
     var secs=lastAt? Math.round((now-lastAt)/1000) : null;
+    var hands=startedAt? Math.round((now-startedAt)/1000) : null;
+    startedAt=null;      // next touch starts the next item's clock
     lastAt=now;
     var rec={
       t: now,
-      s: secs,                                   // seconds since the previous push
+      s: secs,                                   // cycle: seconds since the previous push
+      h: hands,                                  // hands-on: first touch -> push
       br: secs!=null && secs>IDLE_CUTOFF,        // was this a break rather than work
       st: state,
       sku: (entry && (entry.website_sku||entry.sku)) || '',
@@ -37224,11 +37253,18 @@ function shovoRenderHints(q){
       return true;
     });
     var work=rows.filter(function(r){ return r.s!=null && !r.br; }).map(function(r){ return r.s; });
+    // Hands-on times need no break filter — the clock only runs while the
+    // composer is being used, so a lunch break simply never starts it.
+    var hands=rows.filter(function(r){ return r.h!=null && r.h>0 && r.h<IDLE_CUTOFF; }).map(function(r){ return r.h; });
     var clean=rows.filter(function(r){ return r.st==='pushed'; }).length;
     var breaks=rows.filter(function(r){ return r.br; }).length;
     return {
       n: rows.length,
       median: med(work),
+      hands: med(hands),
+      handsN: hands.length,
+      fastestHands: hands.length? Math.min.apply(null,hands) : 0,
+      gap: (med(work)&&med(hands))? Math.max(0, med(work)-med(hands)) : 0,
       fastest: work.length? Math.min.apply(null,work) : 0,
       slowest: work.length? Math.max.apply(null,work) : 0,
       worked: work.reduce(function(a,b){return a+b;},0),
@@ -37270,7 +37306,7 @@ function shovoRenderHints(q){
       '</div>'+
       '<div class="ls-grid">'+
         '<div class="ls-stat"><b>'+S.n+'</b><span>listings</span></div>'+
-        '<div class="ls-stat"><b>'+F(S.median)+'</b><span>typical each</span></div>'+
+        '<div class="ls-stat" title="Median hands-on time: first keystroke in the composer through to the push. This is the item itself, with the waiting-around taken out."><b>'+F(S.hands||S.median)+'</b><span>working on it</span></div>'+
         '<div class="ls-stat"><b>'+(S.perHour||'—')+'</b><span>per hour</span></div>'+
         '<div class="ls-stat"><b>'+S.cleanPct+'%</b><span>clean</span></div>'+
       '</div>'+
@@ -37281,7 +37317,9 @@ function shovoRenderHints(q){
         }).join('')+
       '</div>'+
       '<div class="ls-foot">'+
-        'fastest '+F(S.fastest)+' · slowest '+F(S.slowest)+
+        (S.handsN? 'hands-on '+F(S.hands)+' · start-to-start '+F(S.median)+
+          (S.gap? ' · '+F(S.gap)+' between items' : '')+'<br>' : '')+
+        'fastest '+F(S.fastestHands||S.fastest)+' · slowest '+F(S.slowest)+
         ' · <span title="Gaps over 15 minutes are counted as breaks and left out of the timings, so \u201ctypical each\u201d stays honest.">'+
         S.breaks+' break'+(S.breaks===1?'':'s')+'</span>'+
         ' · '+F(S.worked)+' at the bench'+
