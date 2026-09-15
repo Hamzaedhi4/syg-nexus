@@ -8353,6 +8353,21 @@ let AUTO_MODE = (function(){ try{ return localStorage.getItem('abribook:autoMode
 // only ever understate what's included — the failure mode is a buyer getting
 // a charger they weren't promised, not the reverse.
 let NO_CHARGER_DEFAULT = (function(){ try{ return localStorage.getItem('abribook:noChargerDefault')==='1'; }catch(e){ return false; } })();
+// ── Post-push actions ────────────────────────────────────────────────
+// These two are not prompt-shaping modes like the five above — they decide
+// what happens to an item AFTER it exists in Shopify, so they are grouped
+// and labelled separately rather than added as a sixth and seventh switch.
+//
+// The barcode label is deliberately NOT a variable and has no off state.
+// Every completed listing gets a label printed; that is settled, not a
+// preference, so there is nothing to persist and nothing to read back. It
+// is rendered as a ticked, disabled box purely so the lister can see it is
+// happening instead of wondering whether it ran.
+//
+// Marketplace activation stays a real toggle because it genuinely varies:
+// an item can be legitimately pushed to Shopify without going live on eBay
+// (no photos yet, price still being decided, holding it back deliberately).
+let MC_MODE = (function(){ try{ return localStorage.getItem('abribook:mcMode')==='1'; }catch(e){ return false; } })();
 let _autoPrev = null;
 let _lastReviewedSnapshot = null;
 
@@ -8725,6 +8740,32 @@ function wbWireToggles(){
     });
     const _nc0=document.getElementById('bhaiNoCharger');
     if(_nc0 && NO_CHARGER_DEFAULT) _nc0.checked = true;
+  }
+  if(document.getElementById('wbMcMode')){
+    document.getElementById('wbMcMode').checked = MC_MODE;
+    document.getElementById('wbMcMode').addEventListener('change', (ev)=>{
+      MC_MODE = ev.target.checked;
+      try{ localStorage.setItem('abribook:mcMode', MC_MODE ? '1' : '0'); }catch(e){}
+      toast(MC_MODE
+        ? 'Marketplace activation on — pushed items also get published to eBay'
+        : 'Marketplace activation off — pushes go to Shopify only');
+    });
+  }
+  if(document.getElementById('wbBulkGo')){
+    document.getElementById('wbBulkGo').addEventListener('click', wbBulkActivate);
+    var _bd=document.getElementById('wbBulkDate');
+    if(_bd){
+      // Prefill from the batch already set on the board, so the common case
+      // (activate what I just finished) is one click. Still fully editable —
+      // the whole point of the field is running a PAST date.
+      var _pref=wbBulkNormalizeSuffix(
+        (typeof LISTER_BATCH!=='undefined' && LISTER_BATCH) || '');
+      if(_pref) _bd.value=_pref;
+      _bd.addEventListener('keydown', function(ev){
+        if(ev.key==='Enter'){ ev.preventDefault(); wbBulkActivate(); }
+      });
+      _bd.addEventListener('input', function(){ wbBulkNote(''); });
+    }
   }
   if(document.getElementById('wbAutoMode')){
     document.getElementById('wbAutoMode').checked = AUTO_MODE;
@@ -10864,6 +10905,92 @@ async function wbDeleteQueueEntryAndArchive(id){
   wbDeleteQueueEntry(id);
 }
 
+// ── Bulk activation ──────────────────────────────────────────────────
+// Publishes a whole batch to eBay in one Marketplace Connect pass, keyed on
+// the batch suffix the SKUs end in. Kept separate from the per-entry
+// marketplace toggle because it is not tied to anything in the queue — a
+// lister can run it for a batch finished days ago, from a fresh session,
+// with nothing loaded on the board.
+//
+// Handed off through the SAME Ask Claude relay ZhuanMode and the archive
+// request use, so it behaves like the rest of the auto-send system rather
+// than a one-off channel.
+
+function wbBulkNote(msg, kind){
+  var el=document.getElementById('wbBulkNote');
+  if(!el) return;
+  el.textContent=msg||'';
+  el.className='wb-bulk-note'+(kind?' '+kind:'');
+}
+
+// Accepts what a lister would actually type: 0914, RTL0914, -0914, 09/14.
+// Returns just the digits, because that is what the SKU suffix is. A batch
+// with no digits in it can't produce a suffix, so it is rejected here rather
+// than sent off to match nothing.
+function wbBulkNormalizeSuffix(raw){
+  var digits=String(raw||'').replace(/\D+/g,'');
+  return digits.length>=3 ? digits : '';
+}
+
+function wbBuildBulkActivationPrompt(suffix){
+  return 'BULK MARKETPLACE ACTIVATION — AUTOMATED, NO ONE IS WATCHING THIS CHAT.\n'+
+    'This came in from Nexus\u2019s Wan Board. Nobody is at the keyboard to answer\n'+
+    'follow-up questions. Make the most reasonable call, state it, and keep going.\n\n'+
+    'Load and follow the marketplace-connect-ebay-publish skill, BULK EDIT flow.\n\n'+
+    'Batch suffix: '+suffix+'\n\n'+
+    'In Marketplace Connect (Shopify admin sidebar → Apps → Marketplace Connect,\n'+
+    'eBay.com / gadgetpirates), open Listings, clear any leftover search chip,\n'+
+    'then Bulk edit and search '+suffix+' to pull the whole batch into one grid.\n\n'+
+    'Select ONLY rows that are Inactive AND have photos. Do not select Missing\n'+
+    'rows (those already sold), Active/Listed rows, Errored rows, or any row\n'+
+    'without a photo.\n\n'+
+    'Then, in that grid:\n'+
+    '  · Bulk-apply Enabled = Enabled and Template = Gadget_Pirate\n'+
+    '  · Per row, set the eBay category via that row\u2019s «Automatic» link — research\n'+
+    '    the correct leaf from the item title, do not guess from the tree\n'+
+    '  · Per row, set Condition to the item\u2019s real grade, with a short condition\n'+
+    '    note for anything that is not New\n'+
+    '  · Set Returns accepted = No only on For Parts or untested items\n'+
+    '  · Save\n\n'+
+    'Publishing is NOT immediate — rows staying Inactive / Not Listed afterwards\n'+
+    'is expected and correct. Do not re-save, and do not go looking for a publish\n'+
+    'button; there isn\u2019t one.\n\n'+
+    'Report back: how many rows you selected, the category and condition you set\n'+
+    'for each, and anything you skipped and why.';
+}
+
+async function wbBulkActivate(){
+  var input=document.getElementById('wbBulkDate');
+  var btn=document.getElementById('wbBulkGo');
+  var suffix=wbBulkNormalizeSuffix(input && input.value);
+
+  if(!suffix){
+    wbBulkNote('Type the batch suffix first — the digits the SKUs end in, e.g. 0914.','err');
+    if(input) input.focus();
+    return;
+  }
+  if(typeof nexusAskExtension!=='function'){
+    wbBulkNote('Extension bridge not available — nothing was sent.','err');
+    return;
+  }
+
+  if(btn){ btn.disabled=true; btn.textContent='Sending…'; }
+  wbBulkNote('Sending batch '+suffix+' to Claude…');
+  try{
+    var res=await window.nexusAskExtension(
+      'ZHUAN_PUSH_TO_CLAUDE', {question: wbBuildBulkActivationPrompt(suffix)}, 120000);
+    if(res && res.ok){
+      wbBulkNote('Batch '+suffix+' handed off'+
+        (res.text?': '+res.text.slice(0,140).replace(/\s+/g,' '):' — watch the Ask Claude panel.'),'ok');
+    }else{
+      wbBulkNote('Failed: '+((res&&res.error)||'no response from the Ask Claude panel'),'err');
+    }
+  }catch(err){
+    wbBulkNote('Failed: '+((err&&err.message)||'unknown error'),'err');
+  }
+  if(btn){ btn.disabled=false; btn.textContent='Activate batch'; }
+}
+
 // ── VG: video game barcode lookup ────────────────────────────────────
 // Embedded IN the Wan tab (not its own pane) — a section that sits above
 // the existing Resolved/Wan-says readout. Flow: UPC -> PriceCharting
@@ -12579,6 +12706,38 @@ function buildClaudePrepPrompt(entriesOverride){
     'generation using that category. Note the newly added category clearly '+
     'in your response so it can be reviewed and folded into the standing '+
     'list later.'
+  );
+
+  // ── After-push block ────────────────────────────────────────────────
+  // Always emitted, because the barcode half is always on. The marketplace
+  // half is conditional. Written as one block rather than two so the model
+  // sees a single ordered tail to the job instead of two instructions that
+  // might get interleaved with the listing work — the label must come off
+  // the FINAL SKU, which means after the batch suffix, which means after
+  // everything else has already been decided.
+  parts.push(
+    'AFTER PUSH — run these once the listing edit itself is complete.\n'+
+    'Order matters: finish every listing mutation first, including the batch\n'+
+    'suffix rename, then do the steps below against the FINAL SKU.\n\n'+
+    '1. BARCODE LABEL — always, every item, no exceptions.\n'+
+    '   Use the syg-barcode-label-print skill. One label, 2 x 1 template.\n'+
+    '   The barcode is the last 8 digits of the variant ID, so it can be set\n'+
+    '   directly rather than clicking through the Create-barcodes screens.\n'+
+    '   Wait ~30s after printing and close the label-sheet tab in the same\n'+
+    '   turn — never finish having only promised to close it.\n'+
+    (MC_MODE ?
+    '\n2. MARKETPLACE ACTIVATION — publish this item to eBay.\n'+
+    '   Use the marketplace-connect-ebay-publish skill, single-item flow.\n'+
+    '   Listing enabled = Enabled; research the correct eBay category leaf\n'+
+    '   from the finished title; Template = Gadget_Pirate; condition set to\n'+
+    '   the grade used above, with a short condition note for anything that\n'+
+    '   is not New; Returns accepted = No only if it is For Parts or\n'+
+    '   untested. Then Save. Publishing is not immediate — the row staying\n'+
+    '   Inactive for a while is expected, so do not re-save or hunt for a\n'+
+    '   publish button.\n'
+    :
+    '\n2. MARKETPLACE ACTIVATION — OFF for this send. Push to Shopify only;\n'+
+    '   do not touch Marketplace Connect or publish anything to eBay.\n')
   );
 
   // One assembled operating-mode block, emitted ahead of the task. It exists
@@ -25076,6 +25235,74 @@ html:not(.nx-light){
   @media (prefers-reduced-motion: reduce){
     .wb-shovo-toggle.wb-sweep{animation:none}
   }
+  /* The Send panel is flex:1 in a fixed-height column, so before this block
+     existed its content happened to fit. The after-push group adds ~230px,
+     and with overflow visible the overflow simply painted on top of the
+     Comps panel below it. Scrolling the panel is the fix — the column keeps
+     its proportions and nothing is drawn outside its own box. Scoped to the
+     right column so the Queue panel, which scrolls its own list, is left
+     alone. */
+  .wb-col.wb-right > .wb-pnl.wb-grow{overflow-y:auto; min-height:0;
+    scrollbar-width:thin}
+
+  /* ── After-push group ──────────────────────────────────────────────
+     Visually separated from the five mode switches with a rule and a
+     caption, because these do not change what gets written — they change
+     what happens once it exists. Grouping them with the modes would imply
+     they shape the prompt the same way, which they don't. */
+  .wb-after-hd{font:700 9.5px var(--sans);letter-spacing:.13em;
+    text-transform:uppercase;opacity:.42;margin:13px 2px 5px;
+    padding-top:10px;border-top:1px solid var(--wb-line)}
+  #wbMcMode,#wbBarcodePrint{position:absolute;opacity:0;width:0;height:0}
+  #wbMcMode:checked ~ .wb-auto-box,
+  #wbBarcodePrint:checked ~ .wb-auto-box{background:var(--wb-bl);
+    border-color:var(--wb-bl)}
+  #wbMcMode:checked ~ .wb-auto-box:after,
+  #wbBarcodePrint:checked ~ .wb-auto-box:after{content:"";position:absolute;
+    left:4px;top:1px;width:3px;height:7px;border:solid #031228;
+    border-width:0 2px 2px 0;transform:rotate(43deg)}
+  .wb-mc-row:has(#wbMcMode:checked){border-style:solid;
+    border-color:rgba(78,192,111,.5);background:rgba(78,192,111,.10)}
+  #wbMcMode:checked ~ .wb-auto-lbl{color:#4ec06f}
+  #wbMcMode:checked ~ .wb-auto-box{background:#4ec06f;border-color:#4ec06f}
+  #wbMcMode:checked ~ .wb-auto-box:after{border-color:#0a2010}
+
+  /* Permanently on. Not dimmed: dimming reads as "off/disabled", and this
+     is the opposite — it is the one thing here that always runs. Shown at
+     full strength with a solid rail and an "always on" tag, cursor set to
+     default so it never invites a click that can't do anything. */
+  .wb-auto-row.wb-perma{cursor:default;position:relative;border-style:solid;
+    border-color:rgba(90,160,240,.38);background:rgba(90,160,240,.07)}
+  .wb-auto-row.wb-perma::before{content:"";position:absolute;
+    left:0;top:6px;bottom:6px;width:2px;border-radius:2px;
+    background:var(--wb-bl);opacity:.85}
+  .wb-auto-row.wb-perma .wb-auto-lbl{color:var(--wb-bl)}
+  .wb-auto-row.wb-perma .wb-auto-lbl:after{content:" \00b7 always on";
+    font-style:normal;font-weight:600;opacity:.6;font-size:.92em}
+
+  /* Bulk activation. A batch-level action, not a per-entry one, so it gets
+     its own bordered block rather than sitting in the toggle stack. */
+  .wb-bulk{margin-top:10px;padding:9px 10px 10px;border-radius:8px;
+    border:1px solid var(--wb-line-hi);background:rgba(255,255,255,.02)}
+  .wb-bulk-hd{font:700 11.5px var(--sans);letter-spacing:.04em;margin-bottom:3px}
+  .wb-bulk-sub{font:500 10.5px var(--sans);opacity:.55;line-height:1.45;
+    margin:0 0 7px}
+  .wb-bulk-row{display:flex;gap:6px;align-items:stretch}
+  #wbBulkDate{flex:1 1 auto;min-width:0;padding:6px 8px;border-radius:6px;
+    border:1px solid var(--wb-line-hi);background:rgba(0,0,0,.14);
+    color:inherit;font:600 12px var(--mono,var(--sans));letter-spacing:.06em}
+  #wbBulkDate:focus{outline:none;border-color:var(--wb-bl);
+    box-shadow:0 0 0 2px rgba(90,160,240,.22)}
+  .wb-bulk-btn{flex:0 0 auto;padding:6px 12px;border-radius:6px;cursor:pointer;
+    border:1px solid rgba(78,192,111,.5);background:rgba(78,192,111,.14);
+    color:#4ec06f;font:700 11.5px var(--sans);letter-spacing:.03em}
+  .wb-bulk-btn:hover:not(:disabled){background:rgba(78,192,111,.24)}
+  .wb-bulk-btn:disabled{opacity:.5;cursor:default}
+  .wb-bulk-note{font:500 10.5px var(--sans);opacity:.6;line-height:1.45;
+    margin-top:6px;min-height:0}
+  .wb-bulk-note.err{color:#f0a3a3;opacity:.95}
+  .wb-bulk-note.ok{color:#4ec06f;opacity:.95}
+
   .wb-dep-note{font:500 10.5px var(--sans);opacity:.55;margin:5px 2px 0;
     line-height:1.45}
   .wb-dep-note.wb-dep-hot{opacity:1;color:var(--wb-am)}
@@ -33115,6 +33342,26 @@ nx2RefreshModuleActivity();
             <span class="wb-auto-box"></span>
             <span class="wb-auto-lbl">No charger by default <em>— pre-tick on new entries</em></span>
           </label>
+          <div class="wb-after-hd">After push</div>
+          <label class="wb-auto-row wb-perma" id="wbBarcodeRow" title="Always on. Every completed listing gets a barcode label printed — this one is not a preference and cannot be switched off.">
+            <input type="checkbox" id="wbBarcodePrint" checked disabled>
+            <span class="wb-auto-box"></span>
+            <span class="wb-auto-lbl">Barcode label <em>— print after every push</em></span>
+          </label>
+          <label class="wb-auto-row wb-mc-row" id="wbMcRow" title="When on, each pushed item is also activated on eBay through Marketplace Connect — listing enabled, category, condition, template and returns, the same fields the bulk pass sets. Leave it off to push to Shopify only.">
+            <input type="checkbox" id="wbMcMode">
+            <span class="wb-auto-box"></span>
+            <span class="wb-auto-lbl">Marketplace activation <em>— publish to eBay after push</em></span>
+          </label>
+          <div class="wb-bulk" id="wbBulkAct">
+            <div class="wb-bulk-hd">Bulk activation</div>
+            <p class="wb-bulk-sub">Publish a whole batch to eBay in one pass. Type the suffix the SKUs end in — today's, or any past date.</p>
+            <div class="wb-bulk-row">
+              <input type="text" id="wbBulkDate" placeholder="0914" autocomplete="off" inputmode="numeric" spellcheck="false" maxlength="12">
+              <button type="button" class="wb-bulk-btn" id="wbBulkGo">Activate batch</button>
+            </div>
+            <div class="wb-bulk-note" id="wbBulkNote"></div>
+          </div>
           <div class="wb-dep-note" id="wbDepNote">ZhuanMode requires ShovoMode. Unattended sending can't wait for answers.</div>
           <div class="wb-slot" id="wbSlotSend">
             <button type="button" class="wb-send-btn" id="wbSendCopy" data-wired="1">Copy prompt with items</button>
