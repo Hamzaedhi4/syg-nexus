@@ -501,6 +501,46 @@
   .req-chip.miss{border-color:rgba(229,72,77,.25);background:var(--fail-tint);color:var(--fail-ink);}
   .uni-desc-wrap{margin-bottom:10px;}
   .uni-desc-label-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;}
+
+  /* ── Dictation ──────────────────────────────────────────────────────
+     Voice fills the PROSE half of a description — condition, defects,
+     what's in the box. It is deliberately not trusted with the identifying
+     half: speech models mangle exactly the tokens that matter most here
+     (SSDSC2BB800G4, GV-N3070VISION OC-8GD), and a wrong digit in an MPN is
+     worse than a missing one because nothing downstream can tell. So the
+     interim transcript is shown at full size while talking, before any of
+     it reaches the textarea, and the whole dictation is undoable as one
+     unit rather than word by word. */
+  .nx-mic{display:inline-flex;align-items:center;gap:6px;flex:none;cursor:pointer;
+    padding:4px 9px;border-radius:var(--r-pill,999px);
+    border:1px solid var(--line-2,rgba(23,25,31,.16));background:transparent;
+    color:var(--ink-soft,#5C616C);font:600 11px var(--sans);letter-spacing:.01em;
+    transition:border-color .14s,color .14s,background .14s}
+  .nx-mic:hover:not(:disabled){border-color:var(--accent,#4F5BFF);color:var(--accent,#4F5BFF)}
+  .nx-mic:disabled{opacity:.45;cursor:not-allowed}
+  .nx-mic svg{width:12px;height:12px;flex:none}
+  .nx-mic.on{background:rgba(229,72,77,.12);border-color:#e5484d;color:#e5484d}
+  .nx-mic.on .nx-mic-ico{animation:nxMicPulse 1.1s ease-in-out infinite}
+  @keyframes nxMicPulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  .nx-mic-strip{flex:none;display:flex;align-items:flex-start;gap:8px;
+    margin:0 0 6px;padding:8px 10px;border-radius:8px;
+    border:1px dashed var(--line-2,rgba(23,25,31,.16));
+    background:var(--surface-2,rgba(127,127,127,.06))}
+  .nx-mic-strip[hidden]{display:none}
+  .nx-mic-strip.live{border-style:solid;border-color:rgba(229,72,77,.45);
+    background:rgba(229,72,77,.06)}
+  .nx-mic-dot{flex:none;width:7px;height:7px;margin-top:5px;border-radius:50%;
+    background:var(--ink-faint,#9197A1)}
+  .nx-mic-strip.live .nx-mic-dot{background:#e5484d;animation:nxMicPulse 1.1s ease-in-out infinite}
+  .nx-mic-live{flex:1;min-width:0;font:500 12.5px/1.5 var(--sans);
+    color:var(--ink,#17191F);word-break:break-word}
+  .nx-mic-live .dim{color:var(--ink-faint,#9197A1)}
+  .nx-mic-undo{flex:none;cursor:pointer;padding:3px 8px;border-radius:6px;
+    border:1px solid var(--line-2,rgba(23,25,31,.16));background:transparent;
+    color:var(--ink-soft,#5C616C);font:600 10.5px var(--sans)}
+  .nx-mic-undo:hover{border-color:#e5484d;color:#e5484d}
+  .nx-mic-undo[hidden]{display:none}
   .uni-cheat-link{font-size:11px;color:var(--accent-ink);cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
   .uni-cheat-box{background:var(--accent-tint);border:1px solid rgba(79,91,255,.2);border-radius:var(--r-md);padding:9px 11px;font-size:11.5px;color:var(--accent-ink);line-height:1.6;margin-bottom:8px;}
   .uni-policy-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
@@ -5726,6 +5766,15 @@ html[data-rank="10"] .wb-grid::after{ color:rgba(251,191,36,.65); }
             <div class="uni-desc-wrap">
             <div class="uni-desc-label-row">
               <div class="dp-label">Describe the item — any type, plain English</div>
+              <button type="button" class="nx-mic" id="nxMicBtn" title="Dictate the description (Ctrl+Shift+M). Speak the condition, defects and what's included — type model and part numbers by hand, speech gets those wrong.">
+                <span class="nx-mic-ico" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="5.6" y="1.4" width="4.8" height="8" rx="2.4"/><path d="M3.2 7.2a4.8 4.8 0 0 0 9.6 0M8 12v2.6"/></svg></span>
+                <span class="nx-mic-lbl">Dictate</span>
+              </button>
+            </div>
+            <div class="nx-mic-strip" id="nxMicStrip" hidden>
+              <span class="nx-mic-dot" aria-hidden="true"></span>
+              <span class="nx-mic-live" id="nxMicLive"></span>
+              <button type="button" class="nx-mic-undo" id="nxMicUndo" hidden>Undo</button>
             </div>
             <textarea class="uni-textarea uni-main-textarea" id="bhaiDesc" placeholder="e.g. This is a Corsair TX650 650W power supply, Hi-Pot tested OK, model 75-001315, SN 121871160000005961209..."></textarea>
             <div class="bhai-quick" id="bhaiQuick">
@@ -10222,6 +10271,212 @@ function wbLabSchedule(){
 document.addEventListener('input',function(e){
   if(e.target && (e.target.id==='bhaiDesc' || e.target.id==='bhaiPrice')) wbLabSchedule();
 });
+
+// ── Dictation ────────────────────────────────────────────────────────
+// Chrome's SpeechRecognition, wired to the composer textarea. No key, no
+// backend, no cost — but it is Google-cloud-backed, so it needs a secure
+// context. A file:// copy of Nexus cannot use it at all, which matters
+// because local copies are how this file usually gets opened. That case is
+// detected and explained on the button rather than failing silently when
+// clicked.
+//
+// Design rules this follows, all of them earned:
+//  · Interim text NEVER touches the textarea. It renders in the strip, at
+//    readable size, so a mangled model number is caught before it becomes
+//    part of a listing that Claude will then confidently build on.
+//  · Undo restores the pre-dictation snapshot in one shot. Word-level undo
+//    is useless when the failure mode is "the whole clause came out wrong".
+//  · NO domain substitution. The tempting "gigabytes"→"GB" pass is exactly
+//    how silent corruption gets in — "Gigabyte" is also a brand here, and
+//    the lister cannot see what was rewritten. Transcript stays raw apart
+//    from spacing and sentence capitalisation.
+//  · Chrome ends the session on every pause. While armed we restart it, so
+//    the lister can think mid-sentence without losing the mic.
+(function(){
+  var BTN, STRIP, LIVE, UNDO, TA;
+  var rec=null, armed=false, snapshot=null, restartTimer=null, lastStart=0;
+
+  var Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  function el(id){ return document.getElementById(id) }
+  function ready(){
+    BTN=el('nxMicBtn'); STRIP=el('nxMicStrip'); LIVE=el('nxMicLive');
+    UNDO=el('nxMicUndo'); TA=el('bhaiDesc');
+    return !!(BTN && STRIP && LIVE && UNDO && TA);
+  }
+
+  function disable(why){
+    if(!BTN) return;
+    BTN.disabled=true;
+    BTN.title=why;
+    var lbl=BTN.querySelector('.nx-mic-lbl');
+    if(lbl) lbl.textContent='Dictate';
+  }
+
+  function say(html, live){
+    STRIP.hidden=false;
+    STRIP.classList.toggle('live', !!live);
+    LIVE.innerHTML=html;
+  }
+
+  // Sentence-case the joins so dictated prose reads like the typed prose
+  // around it. Deliberately shallow: first letter of the insert, and any
+  // letter that follows a full stop. Nothing else is touched.
+  function tidy(txt){
+    txt = txt.replace(/\s+/g,' ').trim();
+    if(!txt) return '';
+    txt = txt.charAt(0).toUpperCase()+txt.slice(1);
+    txt = txt.replace(/([.!?])\s+([a-z])/g, function(_,p,c){ return p+' '+c.toUpperCase() });
+    if(!/[.!?]$/.test(txt)) txt += '.';
+    return txt;
+  }
+
+  function insert(txt){
+    if(!txt) return;
+    // Listers rarely punctuate the line they already typed ("Corsair TX650
+    // 650W PSU"), so appending with a plain space produced a run-on that read
+    // as one sentence and changed the meaning. Close the existing clause
+    // first unless it already ends in punctuation of its own.
+    var cur=TA.value.replace(/\s+$/,'');
+    var sep = cur ? (/[.!?,;:\u2014-]$/.test(cur) ? ' ' : '. ') : '';
+    TA.value = cur + sep + txt;
+    // Downstream (Comps/Lab refresh, price advice, Resolved panel) all hang
+    // off the input event — dispatch it or the board silently ignores
+    // everything that was dictated.
+    TA.dispatchEvent(new Event('input',{bubbles:true}));
+  }
+
+  function setBtn(on){
+    BTN.classList.toggle('on', on);
+    var lbl=BTN.querySelector('.nx-mic-lbl');
+    if(lbl) lbl.textContent = on ? 'Listening…' : 'Dictate';
+    BTN.setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+
+  function start(){
+    if(armed || !Ctor) return;
+    try{
+      rec = new Ctor();
+    }catch(err){ disable('Speech recognition could not start in this browser.'); return }
+    rec.lang='en-US'; rec.continuous=true; rec.interimResults=true;
+
+    rec.onresult=function(ev){
+      var interim='', finals='';
+      for(var i=ev.resultIndex;i<ev.results.length;i++){
+        var r=ev.results[i];
+        if(r.isFinal) finals += r[0].transcript+' '; else interim += r[0].transcript;
+      }
+      if(finals) insert(tidy(finals));
+      say(interim
+        ? '<span class="dim">'+interim.replace(/[<>&]/g,'')+'</span>'
+        : '<span class="dim">Listening — speak the condition, defects and what\'s included.</span>', true);
+    };
+
+    rec.onerror=function(ev){
+      var e=ev.error;
+      if(e==='no-speech' || e==='aborted') return;      // normal, the restart loop handles it
+      armed=false; setBtn(false);
+      if(e==='not-allowed' || e==='service-not-allowed'){
+        say('Microphone blocked. Allow mic access for this site in Chrome, then try again.');
+        disable('Microphone permission was denied for this site.');
+      }else if(e==='audio-capture'){
+        say('No microphone found.');
+      }else{
+        say('Dictation stopped: '+e+'.');
+      }
+    };
+
+    // Chrome fires onend after every pause in speech, not just when we stop
+    // it. While armed, restart — with a floor on the interval so a hard
+    // failure can't spin into a restart storm.
+    rec.onend=function(){
+      if(!armed) return;
+      var gap=Date.now()-lastStart;
+      clearTimeout(restartTimer);
+      restartTimer=setTimeout(function(){
+        if(!armed) return;
+        try{ lastStart=Date.now(); rec.start() }catch(err){}
+      }, gap<400 ? 600 : 80);
+    };
+
+    snapshot = TA.value;
+    armed = true;
+    setBtn(true);
+    UNDO.hidden = true;
+    say('<span class="dim">Listening — speak the condition, defects and what\'s included.</span>', true);
+    try{ lastStart=Date.now(); rec.start() }
+    catch(err){ armed=false; setBtn(false); say('Could not open the microphone.') }
+  }
+
+  function stop(){
+    if(!armed) return;
+    armed=false;
+    clearTimeout(restartTimer);
+    try{ rec.stop() }catch(err){}
+    setBtn(false);
+    var added = snapshot!=null && TA.value.length>snapshot.length;
+    if(added){
+      say('Added by dictation — read it back before sending.');
+      UNDO.hidden=false;
+    }else{
+      say('<span class="dim">Nothing was picked up.</span>');
+      UNDO.hidden=true;
+      setTimeout(function(){ if(!armed && UNDO.hidden) STRIP.hidden=true }, 2600);
+    }
+  }
+
+  function toggle(){ armed ? stop() : start() }
+
+  function boot(){
+    if(!ready()) return;
+
+    if(!Ctor){
+      disable('This browser has no built-in speech recognition. Chrome does.');
+      return;
+    }
+    // file:// is the common case for a saved copy of Nexus, and it has to be
+    // tested EXPLICITLY: Chromium reports isSecureContext === true for
+    // file:// URLs, so the obvious guard passes and the failure only shows up
+    // later as a bare `network` error after the lister has already talked at
+    // it. Check the protocol first, secure context second.
+    if(location.protocol==='file:'){
+      disable('Dictation needs the hosted copy of Nexus — a saved file:// copy cannot reach the speech service.');
+      return;
+    }
+    if(!window.isSecureContext){
+      disable('Dictation needs a secure (https) connection.');
+      return;
+    }
+
+    BTN.addEventListener('click', toggle);
+    UNDO.addEventListener('click', function(){
+      if(snapshot==null) return;
+      TA.value=snapshot;
+      TA.dispatchEvent(new Event('input',{bubbles:true}));
+      UNDO.hidden=true;
+      say('<span class="dim">Dictation removed.</span>');
+      setTimeout(function(){ if(!armed) STRIP.hidden=true }, 1800);
+    });
+
+    document.addEventListener('keydown', function(e){
+      if(e.key==='Escape' && armed){ e.preventDefault(); stop(); return }
+      // Ctrl+Shift+M, not Shift+M: plain Shift+M is Copy-all on the board and
+      // is blocked while typing anyway, which is precisely when the mic is
+      // wanted. The ctrl variant survives focus in the textarea.
+      if((e.ctrlKey||e.metaKey) && e.shiftKey && (e.key==='M'||e.key==='m')){
+        e.preventDefault(); toggle();
+      }
+    });
+
+    // Never leave a hot mic behind a hidden tab.
+    document.addEventListener('visibilitychange', function(){
+      if(document.hidden && armed) stop();
+    });
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
 
 // Shared by the small Comps panel and the Lab tab — one eBay-scrape-plus-
 // spec-filter code path so the two can never disagree about which listings
