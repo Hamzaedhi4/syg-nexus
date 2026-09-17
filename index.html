@@ -4424,20 +4424,47 @@ html[data-rank="10"] .wb-grid::after{ color:rgba(251,191,36,.65); }
 }
 </style>
 <style id="nx-batchdates-css">
-#wbDates{margin-bottom:8px}
-#wbDates .bd-row{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
-#wbDates .bd-chip{display:inline-flex;align-items:center;gap:5px;font:700 10.5px var(--mono);
-  letter-spacing:.04em;padding:5px 7px 5px 9px;border-radius:7px;cursor:pointer;
-  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:inherit}
-#wbDates .bd-chip:hover{border-color:rgba(53,208,192,.45)}
-#wbDates .bd-chip.on{background:rgba(53,208,192,.16);border-color:#35D0C0;color:#35D0C0}
-#wbDates .bd-chip i{font-style:normal;opacity:.4;font-size:12px;line-height:1;padding:0 1px}
+/* Sits inside the Bulk activation panel, under its date field — that is the
+   flow these dates belong to. Matches the panel, not the toolbar. */
+#wbDates{margin-top:7px}
+#wbDates .bd-row{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+#wbDates .bd-chip{display:inline-flex;align-items:center;gap:4px;
+  font:700 10px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.03em;
+  padding:3px 5px 3px 7px;border-radius:5px;white-space:nowrap;
+  background:rgba(53,208,192,.14);border:1px solid rgba(53,208,192,.45);color:#7FF3E5}
+#wbDates .bd-chip i{font-style:normal;opacity:.55;font-size:11px;line-height:1;cursor:pointer}
 #wbDates .bd-chip i:hover{opacity:1;color:#F87171}
-#wbDates .bd-add{font:700 10.5px var(--sans);letter-spacing:.04em;padding:5px 9px;border-radius:7px;
-  background:transparent;border:1px dashed rgba(255,255,255,.22);color:inherit;opacity:.65;cursor:pointer}
-#wbDates .bd-add:hover{opacity:1;border-color:#35D0C0;color:#35D0C0}
-#wbDates .bd-note{font-size:10px;opacity:.55;margin-top:5px;line-height:1.45}
-#wbDates .bd-note b{color:#35D0C0;opacity:1}
+#wbDates .bd-add{font:700 10px system-ui,sans-serif;padding:3px 8px;border-radius:5px;
+  background:transparent;border:1px dashed rgba(255,255,255,.28);color:#94a3b8;cursor:pointer;white-space:nowrap}
+#wbDates .bd-add:hover{border-color:#35D0C0;color:#35D0C0}
+#wbDates .bd-input{width:62px;font:700 10px ui-monospace,monospace;padding:3px 6px;border-radius:5px;
+  background:rgba(53,208,192,.12);border:1px solid #35D0C0;color:#fff;outline:none}
+#wbDates .bd-note{font-size:9.5px;color:#94a3b8;margin-top:5px;line-height:1.45}
+</style>
+<style id="nx-wbleft-fix">
+/* The Wan Board's left column is a fixed 250px. The XP bar and pace panel were
+   styled for a roomy panel — five stat columns, 14px padding, a wrapping meta
+   row — which in 250px collapsed into an unreadable jumble. Everything below
+   is a narrow-column fit: fewer columns, tighter padding, smaller type. */
+.wb-col.wb-left{padding:8px;gap:8px;overflow-y:auto}
+
+.wb-col.wb-left #xpBar{padding:7px 9px;gap:9px;border-radius:9px}
+.wb-col.wb-left #xpBar .xp-lvl{width:28px;height:28px;font-size:13px;border-radius:7px}
+.wb-col.wb-left #xpBar .xp-meta{gap:7px;font-size:9.5px;line-height:1.35}
+.wb-col.wb-left #xpBar .xp-rank{font-size:9.5px}
+
+.wb-col.wb-left #lsStats{margin-top:0;padding:9px 10px;border-radius:9px}
+/* Two rows of stats instead of one cramped row of four or five. */
+.wb-col.wb-left #lsStats .ls-grid,
+.wb-col.wb-left #lsStats .ls-grid.five{grid-template-columns:repeat(2,1fr);gap:6px 8px}
+.wb-col.wb-left #lsStats .ls-stat{text-align:left}
+.wb-col.wb-left #lsStats .ls-stat b{font-size:14px}
+.wb-col.wb-left #lsStats .ls-stat span{font-size:9px;line-height:1.3;display:block}
+.wb-col.wb-left #lsStats .ls-bars{height:34px;gap:4px}
+.wb-col.wb-left #lsStats .ls-bar span{font-size:7.5px}
+.wb-col.wb-left #lsStats .ls-foot{font-size:9px;line-height:1.45}
+.wb-col.wb-left #lsStats .ls-head b{font-size:11px}
+.wb-col.wb-left #lsStats .ls-scope button{font-size:9px;padding:2px 4px}
 </style>
 </head><body>
 <div id="nxChrome" class="nx-chrome">
@@ -33477,7 +33504,6 @@ nx2RefreshModuleActivity();
     <div class="wb-grid">
 
       <div class="wb-col wb-left">
-        <div id="wbDates"></div>
         <div id="xpBar" title="Points for pushing listings. Clean pushes build a streak and multiply the score; a flagged push resets it."></div>
           <div id="lsStats"></div>
           <div class="wb-pnl wb-grow">
@@ -33646,6 +33672,7 @@ nx2RefreshModuleActivity();
               <input type="text" id="wbBulkDate" placeholder="0914" autocomplete="off" inputmode="numeric" spellcheck="false" maxlength="12">
               <button type="button" class="wb-bulk-btn" id="wbBulkGo">Activate batch</button>
             </div>
+            <div id="wbDates"></div>
             <div class="wb-bulk-note" id="wbBulkNote"></div>
           </div>
           <div class="wb-dep-note" id="wbDepNote">ZhuanMode requires ShovoMode. Unattended sending can't wait for answers.</div>
@@ -38185,66 +38212,96 @@ function shovoRenderHints(q){
   setInterval(paint, 5000);
 })();
 
-// ── Multiple RTL dates in one session ─────────────────────────────────
-// A lister often works a pile spanning more than one intake date. The batch
-// field holds a single value, so covering two dates meant locking in again
-// halfway through — easy to forget, and the SKUs come out wrong when you do.
-// This keeps a list of dates and marks one active; the active one is what the
-// SKU builder uses, so switching is a click rather than a re-lock.
+// ── Multiple batch dates for bulk activation ─────────────────────────
+// Bulk activation takes ONE suffix at a time, but a pile being activated often
+// spans several intake dates — so you had to run it, wait, retype, run again.
+// These chips collect the dates first; "Activate batch" then runs them one
+// after another through the same relay, so the whole pile goes in one pass.
+// They drive the bulk field only; they do not touch the SKU stamp.
 (function(){
-  var KEY='syg:batchdates';
-  var D={list:[], active:''};
+  var KEY='syg:bulkdates';
+  var D={list:[]};
   try{ var r=localStorage.getItem(KEY); if(r) D=JSON.parse(r); }catch(e){}
   function save(){ try{ localStorage.setItem(KEY, JSON.stringify(D)); }catch(e){} }
+
+  // Same shapes the bulk field accepts: 0914, RTL0914, -0914, 09/14.
   function norm(v){
-    v=String(v||'').trim().toUpperCase().replace(/\s+/g,'');
-    if(!v) return '';
-    if(!/^RTL/.test(v)) v='RTL'+v.replace(/^RTL/,'');
-    return v.slice(0,12);
+    var d=String(v||'').replace(/\D/g,'');
+    return d.length>=3 ? d.slice(0,8) : '';
   }
-  function add(v){ v=norm(v); if(!v||v==='RTL') return false;
-    if(D.list.indexOf(v)<0) D.list.push(v); setActive(v); return true; }
-  function remove(v){ var i=D.list.indexOf(v); if(i<0) return;
-    D.list.splice(i,1); if(D.active===v) D.active=D.list[0]||''; save(); paint(); apply(); }
-  function setActive(v){ D.active=v; save(); paint(); apply(); }
-  function apply(){
-    if(!D.active) return;
-    try{ LISTER_BATCH = D.active; }catch(e){}
-    ['tbListerBatch','listerBatch'].forEach(function(id){
-      var f=document.getElementById(id); if(f) f.value=D.active; });
+  function add(v){
+    v=norm(v); if(!v) { paint(); return false; }
+    if(D.list.indexOf(v)<0) D.list.push(v);
+    save(); paint(); return true;
   }
+  function remove(v){
+    var i=D.list.indexOf(v); if(i<0) return;
+    D.list.splice(i,1); save(); paint();
+  }
+  function list(){ return D.list.slice(); }
+
   function paint(){
     var host=document.getElementById('wbDates'); if(!host) return;
     host.innerHTML='<div class="bd-row">'+
       D.list.map(function(v){
-        return '<button type="button" class="bd-chip'+(v===D.active?' on':'')+'" data-v="'+v+'">'+
-          v+'<i data-x="'+v+'" title="Remove">&times;</i></button>'; }).join('')+
+        return '<span class="bd-chip">'+v+'<i data-x="'+v+'" title="Remove">&times;</i></span>';
+      }).join('')+
       '<button type="button" class="bd-add" id="bdAdd">+ date</button></div>'+
-      (D.list.length>1
-        ? '<div class="bd-note">Stamping new items <b>'+D.active+'</b> \u2014 click another to switch.</div>'
-        : '<div class="bd-note">Add another date if this pile spans more than one intake.</div>');
+      (D.list.length
+        ? '<div class="bd-note">Activate batch will run '+(D.list.length+1)+' suffixes: the one above, then '+D.list.join(', ')+'.</div>'
+        : '<div class="bd-note">Add more dates here to activate several batches in one pass.</div>');
   }
+
+  function showInput(){
+    var host=document.getElementById('wbDates'); if(!host) return;
+    var row=host.querySelector('.bd-row'); if(!row) return;
+    var btn=row.querySelector('#bdAdd'); if(btn) btn.style.display='none';
+    if(row.querySelector('#bdInput')) return;
+    var i=document.createElement('input');
+    i.id='bdInput'; i.className='bd-input'; i.placeholder='0915';
+    i.autocomplete='off'; i.maxLength=12;
+    function done(){ var v=i.value; i.remove(); if(v) add(v); else paint(); }
+    i.addEventListener('keydown',function(e){
+      if(e.key==='Enter'){ e.preventDefault(); done(); }
+      else if(e.key==='Escape'){ i.remove(); paint(); }
+    });
+    i.addEventListener('blur', done);
+    row.appendChild(i); i.focus();
+  }
+
   function wire(){
     var host=document.getElementById('wbDates'); if(!host){ return setTimeout(wire,800); }
     if(host._b) return; host._b=true;
     host.addEventListener('click',function(e){
       var x=e.target.closest('[data-x]');
-      if(x){ e.stopPropagation(); remove(x.getAttribute('data-x')); return; }
-      var c=e.target.closest('[data-v]');
-      if(c){ setActive(c.getAttribute('data-v')); return; }
-      if(e.target.closest('#bdAdd')){ var v=prompt('Add a batch date (e.g. RTL0911)'); if(v) add(v); }
+      if(x){ remove(x.getAttribute('data-x')); return; }
+      if(e.target.closest('#bdAdd')){ showInput(); return; }
     });
-    if(!D.list.length){
-      var cur=''; try{ cur=LISTER_BATCH||''; }catch(e){}
-      if(!cur){ var f=document.getElementById('tbListerBatch'); cur=f? f.value : ''; }
-      if(cur && norm(cur)!=='RTL') add(cur);
-    }
     paint();
   }
-  window.sygBatchDates={ add:add, remove:remove, setActive:setActive,
-    list:function(){ return D.list.slice(); }, active:function(){ return D.active; } };
-  if(document.readyState!=='loading') wire();
-  else document.addEventListener('DOMContentLoaded', wire);
+
+  // Run the extra dates after the main one. The button's own handler fires
+  // first for the field's value; this queues the rest behind it, spaced out so
+  // each pass is a separate relay send rather than four at once.
+  function hookGo(){
+    var go=document.getElementById('wbBulkGo'); if(!go){ return setTimeout(hookGo,800); }
+    if(go._sygMulti) return; go._sygMulti=true;
+    go.addEventListener('click',function(){
+      var extra=list(); if(!extra.length) return;
+      var f=document.getElementById('wbBulkDate'); if(!f) return;
+      extra.forEach(function(v,i){
+        setTimeout(function(){
+          f.value=v;
+          f.dispatchEvent(new Event('input',{bubbles:true}));
+          go.click();
+        }, (i+1)*2500);
+      });
+    }, true);
+  }
+
+  window.sygBulkDates={ add:add, remove:remove, list:list };
+  if(document.readyState!=='loading'){ wire(); hookGo(); }
+  else document.addEventListener('DOMContentLoaded', function(){ wire(); hookGo(); });
 })();
 
 // ── Wan Board keyboard shortcuts ──────────────────────────────────────
