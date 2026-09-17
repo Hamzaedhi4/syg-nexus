@@ -501,46 +501,6 @@
   .req-chip.miss{border-color:rgba(229,72,77,.25);background:var(--fail-tint);color:var(--fail-ink);}
   .uni-desc-wrap{margin-bottom:10px;}
   .uni-desc-label-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;}
-
-  /* ── Dictation ──────────────────────────────────────────────────────
-     Voice fills the PROSE half of a description — condition, defects,
-     what's in the box. It is deliberately not trusted with the identifying
-     half: speech models mangle exactly the tokens that matter most here
-     (SSDSC2BB800G4, GV-N3070VISION OC-8GD), and a wrong digit in an MPN is
-     worse than a missing one because nothing downstream can tell. So the
-     interim transcript is shown at full size while talking, before any of
-     it reaches the textarea, and the whole dictation is undoable as one
-     unit rather than word by word. */
-  .nx-mic{display:inline-flex;align-items:center;gap:6px;flex:none;cursor:pointer;
-    padding:4px 9px;border-radius:var(--r-pill,999px);
-    border:1px solid var(--line-2,rgba(23,25,31,.16));background:transparent;
-    color:var(--ink-soft,#5C616C);font:600 11px var(--sans);letter-spacing:.01em;
-    transition:border-color .14s,color .14s,background .14s}
-  .nx-mic:hover:not(:disabled){border-color:var(--accent,#4F5BFF);color:var(--accent,#4F5BFF)}
-  .nx-mic:disabled{opacity:.45;cursor:not-allowed}
-  .nx-mic svg{width:12px;height:12px;flex:none}
-  .nx-mic.on{background:rgba(229,72,77,.12);border-color:#e5484d;color:#e5484d}
-  .nx-mic.on .nx-mic-ico{animation:nxMicPulse 1.1s ease-in-out infinite}
-  @keyframes nxMicPulse{0%,100%{opacity:1}50%{opacity:.35}}
-
-  .nx-mic-strip{flex:none;display:flex;align-items:flex-start;gap:8px;
-    margin:0 0 6px;padding:8px 10px;border-radius:8px;
-    border:1px dashed var(--line-2,rgba(23,25,31,.16));
-    background:var(--surface-2,rgba(127,127,127,.06))}
-  .nx-mic-strip[hidden]{display:none}
-  .nx-mic-strip.live{border-style:solid;border-color:rgba(229,72,77,.45);
-    background:rgba(229,72,77,.06)}
-  .nx-mic-dot{flex:none;width:7px;height:7px;margin-top:5px;border-radius:50%;
-    background:var(--ink-faint,#9197A1)}
-  .nx-mic-strip.live .nx-mic-dot{background:#e5484d;animation:nxMicPulse 1.1s ease-in-out infinite}
-  .nx-mic-live{flex:1;min-width:0;font:500 12.5px/1.5 var(--sans);
-    color:var(--ink,#17191F);word-break:break-word}
-  .nx-mic-live .dim{color:var(--ink-faint,#9197A1)}
-  .nx-mic-undo{flex:none;cursor:pointer;padding:3px 8px;border-radius:6px;
-    border:1px solid var(--line-2,rgba(23,25,31,.16));background:transparent;
-    color:var(--ink-soft,#5C616C);font:600 10.5px var(--sans)}
-  .nx-mic-undo:hover{border-color:#e5484d;color:#e5484d}
-  .nx-mic-undo[hidden]{display:none}
   .uni-cheat-link{font-size:11px;color:var(--accent-ink);cursor:pointer;text-decoration:underline;text-underline-offset:2px;}
   .uni-cheat-box{background:var(--accent-tint);border:1px solid rgba(79,91,255,.2);border-radius:var(--r-md);padding:9px 11px;font-size:11.5px;color:var(--accent-ink);line-height:1.6;margin-bottom:8px;}
   .uni-policy-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;}
@@ -4411,6 +4371,22 @@ html[data-rank="10"] .wb-grid::after{ color:rgba(251,191,36,.65); }
   html[data-rank="10"] .wb-pnl::before{ animation:none }
 }
 </style>
+<style id="nx-batchdates-css">
+#wbDates{margin-bottom:8px}
+#wbDates .bd-row{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+#wbDates .bd-chip{display:inline-flex;align-items:center;gap:5px;font:700 10.5px var(--mono);
+  letter-spacing:.04em;padding:5px 7px 5px 9px;border-radius:7px;cursor:pointer;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:inherit}
+#wbDates .bd-chip:hover{border-color:rgba(53,208,192,.45)}
+#wbDates .bd-chip.on{background:rgba(53,208,192,.16);border-color:#35D0C0;color:#35D0C0}
+#wbDates .bd-chip i{font-style:normal;opacity:.4;font-size:12px;line-height:1;padding:0 1px}
+#wbDates .bd-chip i:hover{opacity:1;color:#F87171}
+#wbDates .bd-add{font:700 10.5px var(--sans);letter-spacing:.04em;padding:5px 9px;border-radius:7px;
+  background:transparent;border:1px dashed rgba(255,255,255,.22);color:inherit;opacity:.65;cursor:pointer}
+#wbDates .bd-add:hover{opacity:1;border-color:#35D0C0;color:#35D0C0}
+#wbDates .bd-note{font-size:10px;opacity:.55;margin-top:5px;line-height:1.45}
+#wbDates .bd-note b{color:#35D0C0;opacity:1}
+</style>
 </head><body>
 <div id="nxChrome" class="nx-chrome">
   <header class="nxh-hd">
@@ -5766,15 +5742,6 @@ html[data-rank="10"] .wb-grid::after{ color:rgba(251,191,36,.65); }
             <div class="uni-desc-wrap">
             <div class="uni-desc-label-row">
               <div class="dp-label">Describe the item — any type, plain English</div>
-              <button type="button" class="nx-mic" id="nxMicBtn" title="Dictate the description (Ctrl+Shift+M). Speak the condition, defects and what's included — type model and part numbers by hand, speech gets those wrong.">
-                <span class="nx-mic-ico" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="5.6" y="1.4" width="4.8" height="8" rx="2.4"/><path d="M3.2 7.2a4.8 4.8 0 0 0 9.6 0M8 12v2.6"/></svg></span>
-                <span class="nx-mic-lbl">Dictate</span>
-              </button>
-            </div>
-            <div class="nx-mic-strip" id="nxMicStrip" hidden>
-              <span class="nx-mic-dot" aria-hidden="true"></span>
-              <span class="nx-mic-live" id="nxMicLive"></span>
-              <button type="button" class="nx-mic-undo" id="nxMicUndo" hidden>Undo</button>
             </div>
             <textarea class="uni-textarea uni-main-textarea" id="bhaiDesc" placeholder="e.g. This is a Corsair TX650 650W power supply, Hi-Pot tested OK, model 75-001315, SN 121871160000005961209..."></textarea>
             <div class="bhai-quick" id="bhaiQuick">
@@ -8402,21 +8369,6 @@ let AUTO_MODE = (function(){ try{ return localStorage.getItem('abribook:autoMode
 // only ever understate what's included — the failure mode is a buyer getting
 // a charger they weren't promised, not the reverse.
 let NO_CHARGER_DEFAULT = (function(){ try{ return localStorage.getItem('abribook:noChargerDefault')==='1'; }catch(e){ return false; } })();
-// ── Post-push actions ────────────────────────────────────────────────
-// These two are not prompt-shaping modes like the five above — they decide
-// what happens to an item AFTER it exists in Shopify, so they are grouped
-// and labelled separately rather than added as a sixth and seventh switch.
-//
-// The barcode label is deliberately NOT a variable and has no off state.
-// Every completed listing gets a label printed; that is settled, not a
-// preference, so there is nothing to persist and nothing to read back. It
-// is rendered as a ticked, disabled box purely so the lister can see it is
-// happening instead of wondering whether it ran.
-//
-// Marketplace activation stays a real toggle because it genuinely varies:
-// an item can be legitimately pushed to Shopify without going live on eBay
-// (no photos yet, price still being decided, holding it back deliberately).
-let MC_MODE = (function(){ try{ return localStorage.getItem('abribook:mcMode')==='1'; }catch(e){ return false; } })();
 let _autoPrev = null;
 let _lastReviewedSnapshot = null;
 
@@ -8789,32 +8741,6 @@ function wbWireToggles(){
     });
     const _nc0=document.getElementById('bhaiNoCharger');
     if(_nc0 && NO_CHARGER_DEFAULT) _nc0.checked = true;
-  }
-  if(document.getElementById('wbMcMode')){
-    document.getElementById('wbMcMode').checked = MC_MODE;
-    document.getElementById('wbMcMode').addEventListener('change', (ev)=>{
-      MC_MODE = ev.target.checked;
-      try{ localStorage.setItem('abribook:mcMode', MC_MODE ? '1' : '0'); }catch(e){}
-      toast(MC_MODE
-        ? 'Marketplace activation on — pushed items also get published to eBay'
-        : 'Marketplace activation off — pushes go to Shopify only');
-    });
-  }
-  if(document.getElementById('wbBulkGo')){
-    document.getElementById('wbBulkGo').addEventListener('click', wbBulkActivate);
-    var _bd=document.getElementById('wbBulkDate');
-    if(_bd){
-      // Prefill from the batch already set on the board, so the common case
-      // (activate what I just finished) is one click. Still fully editable —
-      // the whole point of the field is running a PAST date.
-      var _pref=wbBulkNormalizeSuffix(
-        (typeof LISTER_BATCH!=='undefined' && LISTER_BATCH) || '');
-      if(_pref) _bd.value=_pref;
-      _bd.addEventListener('keydown', function(ev){
-        if(ev.key==='Enter'){ ev.preventDefault(); wbBulkActivate(); }
-      });
-      _bd.addEventListener('input', function(){ wbBulkNote(''); });
-    }
   }
   if(document.getElementById('wbAutoMode')){
     document.getElementById('wbAutoMode').checked = AUTO_MODE;
@@ -10272,212 +10198,6 @@ document.addEventListener('input',function(e){
   if(e.target && (e.target.id==='bhaiDesc' || e.target.id==='bhaiPrice')) wbLabSchedule();
 });
 
-// ── Dictation ────────────────────────────────────────────────────────
-// Chrome's SpeechRecognition, wired to the composer textarea. No key, no
-// backend, no cost — but it is Google-cloud-backed, so it needs a secure
-// context. A file:// copy of Nexus cannot use it at all, which matters
-// because local copies are how this file usually gets opened. That case is
-// detected and explained on the button rather than failing silently when
-// clicked.
-//
-// Design rules this follows, all of them earned:
-//  · Interim text NEVER touches the textarea. It renders in the strip, at
-//    readable size, so a mangled model number is caught before it becomes
-//    part of a listing that Claude will then confidently build on.
-//  · Undo restores the pre-dictation snapshot in one shot. Word-level undo
-//    is useless when the failure mode is "the whole clause came out wrong".
-//  · NO domain substitution. The tempting "gigabytes"→"GB" pass is exactly
-//    how silent corruption gets in — "Gigabyte" is also a brand here, and
-//    the lister cannot see what was rewritten. Transcript stays raw apart
-//    from spacing and sentence capitalisation.
-//  · Chrome ends the session on every pause. While armed we restart it, so
-//    the lister can think mid-sentence without losing the mic.
-(function(){
-  var BTN, STRIP, LIVE, UNDO, TA;
-  var rec=null, armed=false, snapshot=null, restartTimer=null, lastStart=0;
-
-  var Ctor = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-  function el(id){ return document.getElementById(id) }
-  function ready(){
-    BTN=el('nxMicBtn'); STRIP=el('nxMicStrip'); LIVE=el('nxMicLive');
-    UNDO=el('nxMicUndo'); TA=el('bhaiDesc');
-    return !!(BTN && STRIP && LIVE && UNDO && TA);
-  }
-
-  function disable(why){
-    if(!BTN) return;
-    BTN.disabled=true;
-    BTN.title=why;
-    var lbl=BTN.querySelector('.nx-mic-lbl');
-    if(lbl) lbl.textContent='Dictate';
-  }
-
-  function say(html, live){
-    STRIP.hidden=false;
-    STRIP.classList.toggle('live', !!live);
-    LIVE.innerHTML=html;
-  }
-
-  // Sentence-case the joins so dictated prose reads like the typed prose
-  // around it. Deliberately shallow: first letter of the insert, and any
-  // letter that follows a full stop. Nothing else is touched.
-  function tidy(txt){
-    txt = txt.replace(/\s+/g,' ').trim();
-    if(!txt) return '';
-    txt = txt.charAt(0).toUpperCase()+txt.slice(1);
-    txt = txt.replace(/([.!?])\s+([a-z])/g, function(_,p,c){ return p+' '+c.toUpperCase() });
-    if(!/[.!?]$/.test(txt)) txt += '.';
-    return txt;
-  }
-
-  function insert(txt){
-    if(!txt) return;
-    // Listers rarely punctuate the line they already typed ("Corsair TX650
-    // 650W PSU"), so appending with a plain space produced a run-on that read
-    // as one sentence and changed the meaning. Close the existing clause
-    // first unless it already ends in punctuation of its own.
-    var cur=TA.value.replace(/\s+$/,'');
-    var sep = cur ? (/[.!?,;:\u2014-]$/.test(cur) ? ' ' : '. ') : '';
-    TA.value = cur + sep + txt;
-    // Downstream (Comps/Lab refresh, price advice, Resolved panel) all hang
-    // off the input event — dispatch it or the board silently ignores
-    // everything that was dictated.
-    TA.dispatchEvent(new Event('input',{bubbles:true}));
-  }
-
-  function setBtn(on){
-    BTN.classList.toggle('on', on);
-    var lbl=BTN.querySelector('.nx-mic-lbl');
-    if(lbl) lbl.textContent = on ? 'Listening…' : 'Dictate';
-    BTN.setAttribute('aria-pressed', on ? 'true' : 'false');
-  }
-
-  function start(){
-    if(armed || !Ctor) return;
-    try{
-      rec = new Ctor();
-    }catch(err){ disable('Speech recognition could not start in this browser.'); return }
-    rec.lang='en-US'; rec.continuous=true; rec.interimResults=true;
-
-    rec.onresult=function(ev){
-      var interim='', finals='';
-      for(var i=ev.resultIndex;i<ev.results.length;i++){
-        var r=ev.results[i];
-        if(r.isFinal) finals += r[0].transcript+' '; else interim += r[0].transcript;
-      }
-      if(finals) insert(tidy(finals));
-      say(interim
-        ? '<span class="dim">'+interim.replace(/[<>&]/g,'')+'</span>'
-        : '<span class="dim">Listening — speak the condition, defects and what\'s included.</span>', true);
-    };
-
-    rec.onerror=function(ev){
-      var e=ev.error;
-      if(e==='no-speech' || e==='aborted') return;      // normal, the restart loop handles it
-      armed=false; setBtn(false);
-      if(e==='not-allowed' || e==='service-not-allowed'){
-        say('Microphone blocked. Allow mic access for this site in Chrome, then try again.');
-        disable('Microphone permission was denied for this site.');
-      }else if(e==='audio-capture'){
-        say('No microphone found.');
-      }else{
-        say('Dictation stopped: '+e+'.');
-      }
-    };
-
-    // Chrome fires onend after every pause in speech, not just when we stop
-    // it. While armed, restart — with a floor on the interval so a hard
-    // failure can't spin into a restart storm.
-    rec.onend=function(){
-      if(!armed) return;
-      var gap=Date.now()-lastStart;
-      clearTimeout(restartTimer);
-      restartTimer=setTimeout(function(){
-        if(!armed) return;
-        try{ lastStart=Date.now(); rec.start() }catch(err){}
-      }, gap<400 ? 600 : 80);
-    };
-
-    snapshot = TA.value;
-    armed = true;
-    setBtn(true);
-    UNDO.hidden = true;
-    say('<span class="dim">Listening — speak the condition, defects and what\'s included.</span>', true);
-    try{ lastStart=Date.now(); rec.start() }
-    catch(err){ armed=false; setBtn(false); say('Could not open the microphone.') }
-  }
-
-  function stop(){
-    if(!armed) return;
-    armed=false;
-    clearTimeout(restartTimer);
-    try{ rec.stop() }catch(err){}
-    setBtn(false);
-    var added = snapshot!=null && TA.value.length>snapshot.length;
-    if(added){
-      say('Added by dictation — read it back before sending.');
-      UNDO.hidden=false;
-    }else{
-      say('<span class="dim">Nothing was picked up.</span>');
-      UNDO.hidden=true;
-      setTimeout(function(){ if(!armed && UNDO.hidden) STRIP.hidden=true }, 2600);
-    }
-  }
-
-  function toggle(){ armed ? stop() : start() }
-
-  function boot(){
-    if(!ready()) return;
-
-    if(!Ctor){
-      disable('This browser has no built-in speech recognition. Chrome does.');
-      return;
-    }
-    // file:// is the common case for a saved copy of Nexus, and it has to be
-    // tested EXPLICITLY: Chromium reports isSecureContext === true for
-    // file:// URLs, so the obvious guard passes and the failure only shows up
-    // later as a bare `network` error after the lister has already talked at
-    // it. Check the protocol first, secure context second.
-    if(location.protocol==='file:'){
-      disable('Dictation needs the hosted copy of Nexus — a saved file:// copy cannot reach the speech service.');
-      return;
-    }
-    if(!window.isSecureContext){
-      disable('Dictation needs a secure (https) connection.');
-      return;
-    }
-
-    BTN.addEventListener('click', toggle);
-    UNDO.addEventListener('click', function(){
-      if(snapshot==null) return;
-      TA.value=snapshot;
-      TA.dispatchEvent(new Event('input',{bubbles:true}));
-      UNDO.hidden=true;
-      say('<span class="dim">Dictation removed.</span>');
-      setTimeout(function(){ if(!armed) STRIP.hidden=true }, 1800);
-    });
-
-    document.addEventListener('keydown', function(e){
-      if(e.key==='Escape' && armed){ e.preventDefault(); stop(); return }
-      // Ctrl+Shift+M, not Shift+M: plain Shift+M is Copy-all on the board and
-      // is blocked while typing anyway, which is precisely when the mic is
-      // wanted. The ctrl variant survives focus in the textarea.
-      if((e.ctrlKey||e.metaKey) && e.shiftKey && (e.key==='M'||e.key==='m')){
-        e.preventDefault(); toggle();
-      }
-    });
-
-    // Never leave a hot mic behind a hidden tab.
-    document.addEventListener('visibilitychange', function(){
-      if(document.hidden && armed) stop();
-    });
-  }
-
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot);
-  else boot();
-})();
-
 // Shared by the small Comps panel and the Lab tab — one eBay-scrape-plus-
 // spec-filter code path so the two can never disagree about which listings
 // count as real comps for the same query. Returns rows with titles attached
@@ -11158,92 +10878,6 @@ async function wbDeleteQueueEntryAndArchive(id){
   // reasoning as ZhuanMode elsewhere: never let a failed/slow network
   // step block or lose a queue action that already succeeded locally.
   wbDeleteQueueEntry(id);
-}
-
-// ── Bulk activation ──────────────────────────────────────────────────
-// Publishes a whole batch to eBay in one Marketplace Connect pass, keyed on
-// the batch suffix the SKUs end in. Kept separate from the per-entry
-// marketplace toggle because it is not tied to anything in the queue — a
-// lister can run it for a batch finished days ago, from a fresh session,
-// with nothing loaded on the board.
-//
-// Handed off through the SAME Ask Claude relay ZhuanMode and the archive
-// request use, so it behaves like the rest of the auto-send system rather
-// than a one-off channel.
-
-function wbBulkNote(msg, kind){
-  var el=document.getElementById('wbBulkNote');
-  if(!el) return;
-  el.textContent=msg||'';
-  el.className='wb-bulk-note'+(kind?' '+kind:'');
-}
-
-// Accepts what a lister would actually type: 0914, RTL0914, -0914, 09/14.
-// Returns just the digits, because that is what the SKU suffix is. A batch
-// with no digits in it can't produce a suffix, so it is rejected here rather
-// than sent off to match nothing.
-function wbBulkNormalizeSuffix(raw){
-  var digits=String(raw||'').replace(/\D+/g,'');
-  return digits.length>=3 ? digits : '';
-}
-
-function wbBuildBulkActivationPrompt(suffix){
-  return 'BULK MARKETPLACE ACTIVATION — AUTOMATED, NO ONE IS WATCHING THIS CHAT.\n'+
-    'This came in from Nexus\u2019s Wan Board. Nobody is at the keyboard to answer\n'+
-    'follow-up questions. Make the most reasonable call, state it, and keep going.\n\n'+
-    'Load and follow the marketplace-connect-ebay-publish skill, BULK EDIT flow.\n\n'+
-    'Batch suffix: '+suffix+'\n\n'+
-    'In Marketplace Connect (Shopify admin sidebar → Apps → Marketplace Connect,\n'+
-    'eBay.com / gadgetpirates), open Listings, clear any leftover search chip,\n'+
-    'then Bulk edit and search '+suffix+' to pull the whole batch into one grid.\n\n'+
-    'Select ONLY rows that are Inactive AND have photos. Do not select Missing\n'+
-    'rows (those already sold), Active/Listed rows, Errored rows, or any row\n'+
-    'without a photo.\n\n'+
-    'Then, in that grid:\n'+
-    '  · Bulk-apply Enabled = Enabled and Template = Gadget_Pirate\n'+
-    '  · Per row, set the eBay category via that row\u2019s «Automatic» link — research\n'+
-    '    the correct leaf from the item title, do not guess from the tree\n'+
-    '  · Per row, set Condition to the item\u2019s real grade, with a short condition\n'+
-    '    note for anything that is not New\n'+
-    '  · Set Returns accepted = No only on For Parts or untested items\n'+
-    '  · Save\n\n'+
-    'Publishing is NOT immediate — rows staying Inactive / Not Listed afterwards\n'+
-    'is expected and correct. Do not re-save, and do not go looking for a publish\n'+
-    'button; there isn\u2019t one.\n\n'+
-    'Report back: how many rows you selected, the category and condition you set\n'+
-    'for each, and anything you skipped and why.';
-}
-
-async function wbBulkActivate(){
-  var input=document.getElementById('wbBulkDate');
-  var btn=document.getElementById('wbBulkGo');
-  var suffix=wbBulkNormalizeSuffix(input && input.value);
-
-  if(!suffix){
-    wbBulkNote('Type the batch suffix first — the digits the SKUs end in, e.g. 0914.','err');
-    if(input) input.focus();
-    return;
-  }
-  if(typeof nexusAskExtension!=='function'){
-    wbBulkNote('Extension bridge not available — nothing was sent.','err');
-    return;
-  }
-
-  if(btn){ btn.disabled=true; btn.textContent='Sending…'; }
-  wbBulkNote('Sending batch '+suffix+' to Claude…');
-  try{
-    var res=await window.nexusAskExtension(
-      'ZHUAN_PUSH_TO_CLAUDE', {question: wbBuildBulkActivationPrompt(suffix)}, 120000);
-    if(res && res.ok){
-      wbBulkNote('Batch '+suffix+' handed off'+
-        (res.text?': '+res.text.slice(0,140).replace(/\s+/g,' '):' — watch the Ask Claude panel.'),'ok');
-    }else{
-      wbBulkNote('Failed: '+((res&&res.error)||'no response from the Ask Claude panel'),'err');
-    }
-  }catch(err){
-    wbBulkNote('Failed: '+((err&&err.message)||'unknown error'),'err');
-  }
-  if(btn){ btn.disabled=false; btn.textContent='Activate batch'; }
 }
 
 // ── VG: video game barcode lookup ────────────────────────────────────
@@ -12961,38 +12595,6 @@ function buildClaudePrepPrompt(entriesOverride){
     'generation using that category. Note the newly added category clearly '+
     'in your response so it can be reviewed and folded into the standing '+
     'list later.'
-  );
-
-  // ── After-push block ────────────────────────────────────────────────
-  // Always emitted, because the barcode half is always on. The marketplace
-  // half is conditional. Written as one block rather than two so the model
-  // sees a single ordered tail to the job instead of two instructions that
-  // might get interleaved with the listing work — the label must come off
-  // the FINAL SKU, which means after the batch suffix, which means after
-  // everything else has already been decided.
-  parts.push(
-    'AFTER PUSH — run these once the listing edit itself is complete.\n'+
-    'Order matters: finish every listing mutation first, including the batch\n'+
-    'suffix rename, then do the steps below against the FINAL SKU.\n\n'+
-    '1. BARCODE LABEL — always, every item, no exceptions.\n'+
-    '   Use the syg-barcode-label-print skill. One label, 2 x 1 template.\n'+
-    '   The barcode is the last 8 digits of the variant ID, so it can be set\n'+
-    '   directly rather than clicking through the Create-barcodes screens.\n'+
-    '   Wait ~30s after printing and close the label-sheet tab in the same\n'+
-    '   turn — never finish having only promised to close it.\n'+
-    (MC_MODE ?
-    '\n2. MARKETPLACE ACTIVATION — publish this item to eBay.\n'+
-    '   Use the marketplace-connect-ebay-publish skill, single-item flow.\n'+
-    '   Listing enabled = Enabled; research the correct eBay category leaf\n'+
-    '   from the finished title; Template = Gadget_Pirate; condition set to\n'+
-    '   the grade used above, with a short condition note for anything that\n'+
-    '   is not New; Returns accepted = No only if it is For Parts or\n'+
-    '   untested. Then Save. Publishing is not immediate — the row staying\n'+
-    '   Inactive for a while is expected, so do not re-save or hunt for a\n'+
-    '   publish button.\n'
-    :
-    '\n2. MARKETPLACE ACTIVATION — OFF for this send. Push to Shopify only;\n'+
-    '   do not touch Marketplace Connect or publish anything to eBay.\n')
   );
 
   // One assembled operating-mode block, emitted ahead of the task. It exists
@@ -25490,74 +25092,6 @@ html:not(.nx-light){
   @media (prefers-reduced-motion: reduce){
     .wb-shovo-toggle.wb-sweep{animation:none}
   }
-  /* The Send panel is flex:1 in a fixed-height column, so before this block
-     existed its content happened to fit. The after-push group adds ~230px,
-     and with overflow visible the overflow simply painted on top of the
-     Comps panel below it. Scrolling the panel is the fix — the column keeps
-     its proportions and nothing is drawn outside its own box. Scoped to the
-     right column so the Queue panel, which scrolls its own list, is left
-     alone. */
-  .wb-col.wb-right > .wb-pnl.wb-grow{overflow-y:auto; min-height:0;
-    scrollbar-width:thin}
-
-  /* ── After-push group ──────────────────────────────────────────────
-     Visually separated from the five mode switches with a rule and a
-     caption, because these do not change what gets written — they change
-     what happens once it exists. Grouping them with the modes would imply
-     they shape the prompt the same way, which they don't. */
-  .wb-after-hd{font:700 9.5px var(--sans);letter-spacing:.13em;
-    text-transform:uppercase;opacity:.42;margin:13px 2px 5px;
-    padding-top:10px;border-top:1px solid var(--wb-line)}
-  #wbMcMode,#wbBarcodePrint{position:absolute;opacity:0;width:0;height:0}
-  #wbMcMode:checked ~ .wb-auto-box,
-  #wbBarcodePrint:checked ~ .wb-auto-box{background:var(--wb-bl);
-    border-color:var(--wb-bl)}
-  #wbMcMode:checked ~ .wb-auto-box:after,
-  #wbBarcodePrint:checked ~ .wb-auto-box:after{content:"";position:absolute;
-    left:4px;top:1px;width:3px;height:7px;border:solid #031228;
-    border-width:0 2px 2px 0;transform:rotate(43deg)}
-  .wb-mc-row:has(#wbMcMode:checked){border-style:solid;
-    border-color:rgba(78,192,111,.5);background:rgba(78,192,111,.10)}
-  #wbMcMode:checked ~ .wb-auto-lbl{color:#4ec06f}
-  #wbMcMode:checked ~ .wb-auto-box{background:#4ec06f;border-color:#4ec06f}
-  #wbMcMode:checked ~ .wb-auto-box:after{border-color:#0a2010}
-
-  /* Permanently on. Not dimmed: dimming reads as "off/disabled", and this
-     is the opposite — it is the one thing here that always runs. Shown at
-     full strength with a solid rail and an "always on" tag, cursor set to
-     default so it never invites a click that can't do anything. */
-  .wb-auto-row.wb-perma{cursor:default;position:relative;border-style:solid;
-    border-color:rgba(90,160,240,.38);background:rgba(90,160,240,.07)}
-  .wb-auto-row.wb-perma::before{content:"";position:absolute;
-    left:0;top:6px;bottom:6px;width:2px;border-radius:2px;
-    background:var(--wb-bl);opacity:.85}
-  .wb-auto-row.wb-perma .wb-auto-lbl{color:var(--wb-bl)}
-  .wb-auto-row.wb-perma .wb-auto-lbl:after{content:" \00b7 always on";
-    font-style:normal;font-weight:600;opacity:.6;font-size:.92em}
-
-  /* Bulk activation. A batch-level action, not a per-entry one, so it gets
-     its own bordered block rather than sitting in the toggle stack. */
-  .wb-bulk{margin-top:10px;padding:9px 10px 10px;border-radius:8px;
-    border:1px solid var(--wb-line-hi);background:rgba(255,255,255,.02)}
-  .wb-bulk-hd{font:700 11.5px var(--sans);letter-spacing:.04em;margin-bottom:3px}
-  .wb-bulk-sub{font:500 10.5px var(--sans);opacity:.55;line-height:1.45;
-    margin:0 0 7px}
-  .wb-bulk-row{display:flex;gap:6px;align-items:stretch}
-  #wbBulkDate{flex:1 1 auto;min-width:0;padding:6px 8px;border-radius:6px;
-    border:1px solid var(--wb-line-hi);background:rgba(0,0,0,.14);
-    color:inherit;font:600 12px var(--mono,var(--sans));letter-spacing:.06em}
-  #wbBulkDate:focus{outline:none;border-color:var(--wb-bl);
-    box-shadow:0 0 0 2px rgba(90,160,240,.22)}
-  .wb-bulk-btn{flex:0 0 auto;padding:6px 12px;border-radius:6px;cursor:pointer;
-    border:1px solid rgba(78,192,111,.5);background:rgba(78,192,111,.14);
-    color:#4ec06f;font:700 11.5px var(--sans);letter-spacing:.03em}
-  .wb-bulk-btn:hover:not(:disabled){background:rgba(78,192,111,.24)}
-  .wb-bulk-btn:disabled{opacity:.5;cursor:default}
-  .wb-bulk-note{font:500 10.5px var(--sans);opacity:.6;line-height:1.45;
-    margin-top:6px;min-height:0}
-  .wb-bulk-note.err{color:#f0a3a3;opacity:.95}
-  .wb-bulk-note.ok{color:#4ec06f;opacity:.95}
-
   .wb-dep-note{font:500 10.5px var(--sans);opacity:.55;margin:5px 2px 0;
     line-height:1.45}
   .wb-dep-note.wb-dep-hot{opacity:1;color:var(--wb-am)}
@@ -33447,6 +32981,7 @@ nx2RefreshModuleActivity();
     <div class="wb-grid">
 
       <div class="wb-col wb-left">
+        <div id="wbDates"></div>
         <div id="xpBar" title="Points for pushing listings. Clean pushes build a streak and multiply the score; a flagged push resets it."></div>
           <div id="lsStats"></div>
           <div class="wb-pnl wb-grow">
@@ -33597,26 +33132,6 @@ nx2RefreshModuleActivity();
             <span class="wb-auto-box"></span>
             <span class="wb-auto-lbl">No charger by default <em>— pre-tick on new entries</em></span>
           </label>
-          <div class="wb-after-hd">After push</div>
-          <label class="wb-auto-row wb-perma" id="wbBarcodeRow" title="Always on. Every completed listing gets a barcode label printed — this one is not a preference and cannot be switched off.">
-            <input type="checkbox" id="wbBarcodePrint" checked disabled>
-            <span class="wb-auto-box"></span>
-            <span class="wb-auto-lbl">Barcode label <em>— print after every push</em></span>
-          </label>
-          <label class="wb-auto-row wb-mc-row" id="wbMcRow" title="When on, each pushed item is also activated on eBay through Marketplace Connect — listing enabled, category, condition, template and returns, the same fields the bulk pass sets. Leave it off to push to Shopify only.">
-            <input type="checkbox" id="wbMcMode">
-            <span class="wb-auto-box"></span>
-            <span class="wb-auto-lbl">Marketplace activation <em>— publish to eBay after push</em></span>
-          </label>
-          <div class="wb-bulk" id="wbBulkAct">
-            <div class="wb-bulk-hd">Bulk activation</div>
-            <p class="wb-bulk-sub">Publish a whole batch to eBay in one pass. Type the suffix the SKUs end in — today's, or any past date.</p>
-            <div class="wb-bulk-row">
-              <input type="text" id="wbBulkDate" placeholder="0914" autocomplete="off" inputmode="numeric" spellcheck="false" maxlength="12">
-              <button type="button" class="wb-bulk-btn" id="wbBulkGo">Activate batch</button>
-            </div>
-            <div class="wb-bulk-note" id="wbBulkNote"></div>
-          </div>
           <div class="wb-dep-note" id="wbDepNote">ZhuanMode requires ShovoMode. Unattended sending can't wait for answers.</div>
           <div class="wb-slot" id="wbSlotSend">
             <button type="button" class="wb-send-btn" id="wbSendCopy" data-wired="1">Copy prompt with items</button>
@@ -37017,11 +36532,19 @@ document.addEventListener('click',function(e){
       // signal in the whole dataset, and quantity alone missed it.
       var shopGone = shop.found ? (shop.qty<=0 || shop.status==='archived' || shop.status==='draft') : null;
       var kind=null, why='';
+      // A sale only makes a listing a phantom if the UNIT IS GONE. Multi-
+      // quantity items are supposed to sell and stay listed: a power adapter
+      // with 257 in stock that sold 27 times is working exactly as intended.
+      // Checking "sold with tracking" without checking stock flagged 51 of 71
+      // items wrongly — mostly stocked accessories that had simply sold one.
+      // So shopGone is now a precondition, not a fallback.
       if(!shop.found){ kind='ghost'; why='No Shopify product carries this SKU'; }
-      else if(sold && /\d/.test(sold.track||'')){ kind='phantom'; why='Sold and shipped with tracking'; }
-      else if(sold){ kind='check'; why='On the shipped report, but no tracking'; }
+      else if(sold && shopGone && hasTracking(sold.track)){
+        kind='phantom'; why='Sold and shipped, and Shopify shows it gone'; }
+      else if(sold && shopGone){
+        kind='check'; why='Shopify shows it gone and it sold, but no carrier scan'; }
       else if(shopGone){ kind='check'; why='Shopify shows it gone; no eBay sale found'; }
-      else return;                                        // live, in stock, unsold → clean
+      else return;   // in stock and still listed — normal, whether it sold or not
       // The listings report carries "Item number" — the real eBay listing id.
       // Without it "Open on eBay" had nothing to open, which is why it did
       // nothing. Carried through so the button goes to the actual listing.
@@ -38134,6 +37657,94 @@ function shovoRenderHints(q){
   if(document.readyState!=='loading') paint();
   else document.addEventListener('DOMContentLoaded', paint);
   setInterval(paint, 5000);
+})();
+
+// ── Multiple RTL dates in one session ─────────────────────────────────
+// A lister often works a pile that spans more than one intake date. The batch
+// field holds a single value, so covering two dates meant locking in again
+// halfway through — easy to forget, and the SKUs come out wrong when you do.
+// This keeps a list of dates for the session and marks one as active; the
+// active one is what listerSKU() uses, so switching is a click rather than a
+// re-lock. Nothing is sent to Claude differently — the dates only affect which
+// batch each entry is stamped with before it goes.
+(function(){
+  var KEY='syg:batchdates';
+  var D={list:[], active:''};
+  try{ var r=localStorage.getItem(KEY); if(r) D=JSON.parse(r); }catch(e){}
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(D)); }catch(e){} }
+
+  function norm(v){
+    v=String(v||'').trim().toUpperCase().replace(/\s+/g,'');
+    if(!v) return '';
+    if(!/^RTL/.test(v)) v='RTL'+v.replace(/^RTL/,'');
+    return v.slice(0,12);
+  }
+  function add(v){
+    v=norm(v); if(!v || v==='RTL') return false;
+    if(D.list.indexOf(v)<0) D.list.push(v);
+    setActive(v); return true;
+  }
+  function remove(v){
+    var i=D.list.indexOf(v); if(i<0) return;
+    D.list.splice(i,1);
+    if(D.active===v) D.active=D.list[0]||'';
+    save(); paint(); apply();
+  }
+  function setActive(v){
+    D.active=v; save(); paint(); apply();
+  }
+  // The active date is the one the SKU builder uses, so switching chips
+  // immediately changes what the next entry is stamped with.
+  function apply(){
+    if(!D.active) return;
+    try{ LISTER_BATCH = D.active; }catch(e){}
+    ['tbListerBatch','listerBatch'].forEach(function(id){
+      var f=document.getElementById(id); if(f) f.value=D.active;
+    });
+  }
+
+  function paint(){
+    var host=document.getElementById('wbDates'); if(!host) return;
+    host.innerHTML=
+      '<div class="bd-row">'+
+        D.list.map(function(v){
+          return '<button type="button" class="bd-chip'+(v===D.active?' on':'')+'" data-v="'+v+'">'+
+            v+'<i data-x="'+v+'" title="Remove">&times;</i></button>';
+        }).join('')+
+        '<button type="button" class="bd-add" id="bdAdd">+ date</button>'+
+      '</div>'+
+      (D.list.length>1
+        ? '<div class="bd-note">Stamping new items <b>'+D.active+'</b> \u2014 click another to switch.</div>'
+        : '<div class="bd-note">Add another date if this pile spans more than one intake.</div>');
+  }
+
+  function wire(){
+    var host=document.getElementById('wbDates'); if(!host){ return setTimeout(wire,800); }
+    if(host._b) return; host._b=true;
+    host.addEventListener('click',function(e){
+      var x=e.target.closest('[data-x]');
+      if(x){ e.stopPropagation(); remove(x.getAttribute('data-x')); return; }
+      var c=e.target.closest('[data-v]');
+      if(c){ setActive(c.getAttribute('data-v')); return; }
+      if(e.target.closest('#bdAdd')){
+        var v=prompt('Add a batch date (e.g. RTL0911)');
+        if(v) add(v);
+      }
+    });
+    // Seed from whatever is already locked in, so nothing is lost on first use.
+    if(!D.list.length){
+      var cur='';
+      try{ cur=LISTER_BATCH||''; }catch(e){}
+      if(!cur){ var f=document.getElementById('tbListerBatch'); cur=f? f.value : ''; }
+      if(cur && norm(cur)!=='RTL') add(cur);
+    }
+    paint();
+  }
+
+  window.sygBatchDates={ add:add, remove:remove, setActive:setActive,
+    list:function(){ return D.list.slice(); }, active:function(){ return D.active; } };
+  if(document.readyState!=='loading') wire();
+  else document.addEventListener('DOMContentLoaded', wire);
 })();
 
 // ── Wan Board keyboard shortcuts ──────────────────────────────────────
