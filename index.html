@@ -4180,6 +4180,18 @@ html.nx-sb-off .nx-chrome .nxh-sb{ display:none; }
 #phantomZone .pz-done.armed,#phantomZone .pz-done.g,#phantomZone .pz-done.v{opacity:1}
 #phantomZone .pz-done.r{background:var(--nx-bad)} #phantomZone .pz-done.g{background:var(--nx-ok)}
 #phantomZone .pz-done.v{background:#7C3AED}
+#phantomZone .pz-tab.k-nostock.on{border-bottom-color:var(--nx-bad)}
+#phantomZone .pz-tab.k-nostock.on b,#phantomZone .pz-tab.k-nostock.on span{color:var(--nx-bad)}
+#phantomZone .pz-tab.k-mismatch.on{border-bottom-color:#0891B2}
+#phantomZone .pz-tab.k-mismatch.on b,#phantomZone .pz-tab.k-mismatch.on span{color:#0891B2}
+#phantomZone .pz-dot.nostock{background:var(--nx-bad)}
+#phantomZone .pz-dot.mismatch{background:#0891B2}
+#phantomZone .pz-wtop.k-nostock{background:linear-gradient(180deg,#FEF2F2,transparent)}
+#phantomZone .pz-wtop.k-mismatch{background:linear-gradient(180deg,#ECFEFF,transparent)}
+#phantomZone .pz-wtag.k-nostock{background:var(--nx-bad)}
+#phantomZone .pz-wtag.k-mismatch{background:#0891B2}
+#phantomZone .pz-verd.k-nostock{background:#FEF2F2;color:#991B1B}
+#phantomZone .pz-verd.k-mismatch{background:#ECFEFF;color:#155E75}
 </style>
 <style id="nx-trace-css">
 #traceZone{position:fixed;top:var(--nx-hd-h);left:var(--nx-sb-w);right:0;bottom:0;display:none;
@@ -4411,6 +4423,22 @@ html[data-rank="10"] .wb-grid::after{ color:rgba(251,191,36,.65); }
   html[data-rank="10"] .wb-pnl::before{ animation:none }
 }
 </style>
+<style id="nx-batchdates-css">
+#wbDates{margin-bottom:8px}
+#wbDates .bd-row{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+#wbDates .bd-chip{display:inline-flex;align-items:center;gap:5px;font:700 10.5px var(--mono);
+  letter-spacing:.04em;padding:5px 7px 5px 9px;border-radius:7px;cursor:pointer;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:inherit}
+#wbDates .bd-chip:hover{border-color:rgba(53,208,192,.45)}
+#wbDates .bd-chip.on{background:rgba(53,208,192,.16);border-color:#35D0C0;color:#35D0C0}
+#wbDates .bd-chip i{font-style:normal;opacity:.4;font-size:12px;line-height:1;padding:0 1px}
+#wbDates .bd-chip i:hover{opacity:1;color:#F87171}
+#wbDates .bd-add{font:700 10.5px var(--sans);letter-spacing:.04em;padding:5px 9px;border-radius:7px;
+  background:transparent;border:1px dashed rgba(255,255,255,.22);color:inherit;opacity:.65;cursor:pointer}
+#wbDates .bd-add:hover{opacity:1;border-color:#35D0C0;color:#35D0C0}
+#wbDates .bd-note{font-size:10px;opacity:.55;margin-top:5px;line-height:1.45}
+#wbDates .bd-note b{color:#35D0C0;opacity:1}
+</style>
 </head><body>
 <div id="nxChrome" class="nx-chrome">
   <header class="nxh-hd">
@@ -4483,6 +4511,8 @@ html[data-rank="10"] .wb-grid::after{ color:rgba(251,191,36,.65); }
         <button class="pz-tab on" data-f="all" data-tip="Everything flagged."><b id="pzTAll">0</b><span>all</span></button>
         <button class="pz-tab k-phantom" data-f="phantom" data-tip="CONFIRMED: sold, gone, still live. Safe to kill."><b id="pzTPh">0</b><span>confirmed</span></button>
         <button class="pz-tab k-check" data-f="check" data-tip="CHECK: probably sold, confirm on the shelf first."><b id="pzTCk">0</b><span>check</span></button>
+        <button class="pz-tab k-nostock" data-f="nostock" data-tip="SOLD IN STORE: Shopify shows zero stock with no eBay sale \u2014 it most likely sold over the counter and eBay was never told."><b id="pzTNs">0</b><span>in store</span></button>
+        <button class="pz-tab k-mismatch" data-f="mismatch" data-tip="STATUS WRONG: listed on eBay and Shopify still shows stock, but the product is draft or archived. Fix the status rather than ending the listing."><b id="pzTMm">0</b><span>status</span></button>
         <button class="pz-tab k-ghost" data-f="ghost" data-tip="GHOST: live on eBay, no Shopify match — usually a SKU typo."><b id="pzTGh">0</b><span>ghost</span></button>
         <button class="pz-tab k-stock" data-f="phantomstock" data-tip="SOLD BUT STOCK NOT UPDATED: Shopify still shows stock, but the shipped report says it already went out. Fix the quantity, don't list it."><b id="pzTSt">0</b><span>stock wrong</span></button>
         <button class="pz-tab k-unlisted" data-f="unlisted" data-tip="READY TO LIST: prepped in Shopify with stock, added in the last 60 days, but never pushed to eBay."><b id="pzTUn">0</b><span>to list</span></button>
@@ -33447,6 +33477,7 @@ nx2RefreshModuleActivity();
     <div class="wb-grid">
 
       <div class="wb-col wb-left">
+        <div id="wbDates"></div>
         <div id="xpBar" title="Points for pushing listings. Clean pushes build a streak and multiply the score; a flagged push resets it."></div>
           <div id="lsStats"></div>
           <div class="wb-pnl wb-grow">
@@ -37017,11 +37048,23 @@ document.addEventListener('click',function(e){
       // signal in the whole dataset, and quantity alone missed it.
       var shopGone = shop.found ? (shop.qty<=0 || shop.status==='archived' || shop.status==='draft') : null;
       var kind=null, why='';
+      // A sale only makes a listing a phantom if the UNIT IS GONE. Multi-quantity
+      // items are supposed to sell and stay listed — a power adapter with 257 in
+      // stock that sold 27 times is working as intended. Checking "sold with
+      // tracking" without checking stock flagged 51 of 71 items wrongly.
       if(!shop.found){ kind='ghost'; why='No Shopify product carries this SKU'; }
-      else if(sold && /\d/.test(sold.track||'')){ kind='phantom'; why='Sold and shipped with tracking'; }
-      else if(sold){ kind='check'; why='On the shipped report, but no tracking'; }
-      else if(shopGone){ kind='check'; why='Shopify shows it gone; no eBay sale found'; }
-      else return;                                        // live, in stock, unsold → clean
+      else if(sold && shopGone && hasTracking(sold.track)){
+        kind='phantom'; why='Sold and shipped, and Shopify shows it gone'; }
+      else if(sold && shopGone){
+        kind='check'; why='Shopify shows it gone and it sold, but no carrier scan'; }
+      // Nothing sold. What matters is whether there is stock:
+      //   stock 0  -> almost certainly sold over the counter; eBay was never told
+      //   stock >0 -> unit is likely on the shelf, Shopify status is just wrong
+      else if(shopGone && shop.qty<=0){
+        kind='nostock'; why='Zero stock and no eBay sale \u2014 likely sold in store'; }
+      else if(shopGone){
+        kind='mismatch'; why='Listed on eBay, but '+shop.status+' in Shopify with '+shop.qty+' in stock'; }
+      else return;   // in stock and still listed — normal, whether it sold or not
       // The listings report carries "Item number" — the real eBay listing id.
       // Without it "Open on eBay" had nothing to open, which is why it did
       // nothing. Carried through so the button goes to the actual listing.
@@ -37082,7 +37125,7 @@ document.addEventListener('click',function(e){
         sold:'n/a — never listed'});
     });
 
-    var order={phantom:0,phantomstock:1,check:2,ghost:3,unlisted:4};
+    var order={phantom:0,phantomstock:1,check:2,nostock:3,mismatch:4,ghost:5,unlisted:6};
     PZ.sort(function(a,b){return order[a.kind]-order[b.kind];});
     idx=0; render(); toast('Scanned · '+PZ.length+' phantom'+(PZ.length===1?'':'s')+' found');
   }
@@ -37091,6 +37134,10 @@ document.addEventListener('click',function(e){
           check:{tag:'GO LOOK ON THE SHELF',grp:'Go look before doing anything',verd:'<b>It looks sold, but we cannot prove it left.</b> There is no carrier scan on it. Walk over to the shelf and see for yourself before taking the listing down \u2014 if it is still there, do nothing.'},
           phantomstock:{tag:'SOLD, BUT SHOPIFY STILL COUNTS IT',grp:'Sold, but Shopify still thinks you have one',
             verd:'<b>Do not put this on eBay \u2014 it is already gone.</b> Shopify still shows one in stock, but eBay says it sold and shipped. Shopify never got told about the sale, so the count is wrong. Fix the number instead.'},
+          nostock:{tag:'SOLD IN STORE, STILL LISTED',grp:'Gone from stock, still live on eBay',
+            verd:'<b>Buyable right now, with nothing to ship.</b> Shopify shows zero stock and there is no eBay sale \u2014 which usually means it sold over the counter and eBay was never told. Same problem as a phantom, just sold through the other channel. Take the listing down.'},
+          mismatch:{tag:'SHOPIFY STATUS IS WRONG',grp:'Listed, but not active in Shopify',
+            verd:'<b>The unit is probably still here.</b> It is live on eBay and Shopify shows stock \u2014 but the product is not set to active, so it is out of sync. Nothing sold. Set the status right rather than ending the listing.'},
           unlisted:{tag:'READY TO SELL',grp:'Sitting here, never put on eBay',verd:'<b>This is sitting here doing nothing.</b> Shopify has it in stock and nothing has sold it, but it was never put on eBay. Put it up and it can start selling.'},
           ghost:{tag:'NOT IN SHOPIFY',grp:'This SKU is not in Shopify',verd:'<b>No Shopify match.</b> This SKU isn\'t in the loaded catalog. If lots of items show this, the catalog is stale — click the Shopify catalog badge up top to refresh it. If the catalog is current, it\'s a real SKU typo or a deleted product.'}};
   var QUERY='', TYPE='';
@@ -37117,7 +37164,7 @@ document.addEventListener('click',function(e){
     if(cur && keys.indexOf(cur)<0){ TYPE=''; sel.value=''; }
   }
   function tabs(){ var c=function(k){return PZ.filter(function(p){return p.kind===k;}).length;};
-    $('pzTAll').textContent=PZ.length; $('pzTPh').textContent=c('phantom'); $('pzTCk').textContent=c('check'); $('pzTGh').textContent=c('ghost'); $('pzTUn').textContent=c('unlisted'); var e=$('pzTSt'); if(e) e.textContent=c('phantomstock'); }
+    $('pzTAll').textContent=PZ.length; $('pzTPh').textContent=c('phantom'); $('pzTCk').textContent=c('check'); $('pzTGh').textContent=c('ghost'); var ns=$('pzTNs'); if(ns) ns.textContent=c('nostock'); var mm=$('pzTMm'); if(mm) mm.textContent=c('mismatch'); $('pzTUn').textContent=c('unlisted'); var e=$('pzTSt'); if(e) e.textContent=c('phantomstock'); }
   function metrics(){
     $('pzMPh').textContent=PZ.filter(function(p){return p.kind==='phantom';}).length;
     $('pzMCk').textContent=PZ.filter(function(p){return p.kind==='check'||p.kind==='ghost';}).length;
@@ -37128,7 +37175,7 @@ document.addEventListener('click',function(e){
     tabs(); metrics(); renderTypes();
     var l=$('pzList'), rows=filtered();
     if(!rows.length){ l.innerHTML='<div style="padding:50px 24px;text-align:center;color:var(--nx-muted)"><div style="font-size:38px;margin-bottom:8px">✓</div>Nothing here.</div>'; return; }
-    var order=['phantom','phantomstock','check','ghost','unlisted'], html='';
+    var order=['phantom','phantomstock','check','nostock','mismatch','ghost','unlisted'], html='';
     order.forEach(function(k){
       if(FILTER!=='all'&&FILTER!==k) return;
       var grp=rows.filter(function(p){return p.kind===k;}); if(!grp.length) return;
@@ -37159,6 +37206,8 @@ document.addEventListener('click',function(e){
     else if(p.kind==='check')        order=['history','orders','ebay','mc','shopify','msg'];
     else if(p.kind==='ghost')        order=['ebay','history','shopify','mc','orders','msg'];
     else if(p.kind==='phantomstock') order=['shopify','orders','history','msg','mc'];
+    else if(p.kind==='nostock')      order=['shopify','history','ebay','mc','orders'];
+    else if(p.kind==='mismatch')     order=['shopify','ebay','history','mc','orders'];
     else                             order=['mc','shopify','history','ebay'];
     return order.map(function(k){ return PZ_ACTIONS[k]; });
   }
@@ -37211,11 +37260,11 @@ document.addEventListener('click',function(e){
             '<button type="button" class="pz-actgo" id="pzActGo">Go</button>'+
           '</div>'+
           '<div class="pz-acthint" id="pzActHint">'+esc(actionsFor(p)[0].hint)+'</div>'+
-          (p.kind==='phantom'||p.kind==='check'||p.kind==='ghost'
+          (p.kind==='phantom'||p.kind==='check'||p.kind==='ghost'||p.kind==='nostock'
             ? '<label class="pz-arm" data-tip="Tick once you\u2019re sure it\u2019s gone."><input type="checkbox" id="pzArm">'+
               (p.kind==='check'?'I walked over \u2014 it\u2019s not on the shelf':p.kind==='ghost'?'I checked the SKU \u2014 this shouldn\u2019t be live':'Confirmed \u2014 the unit is gone')+'</label>'
             : '')+
-          '<button type="button" class="pz-done '+(p.kind==='unlisted'?'g':p.kind==='phantomstock'?'v':'r')+'" id="pzDone">Done \u2014 clear it from the list</button>'+
+          '<button type="button" class="pz-done '+(p.kind==='unlisted'||p.kind==='mismatch'?'g':p.kind==='phantomstock'?'v':'r')+'" id="pzDone">Done \u2014 clear it from the list</button>'+
         '</div>';
     var armEl=$('pzArm');
     if(armEl) armEl.addEventListener('change',function(e){
@@ -38134,6 +38183,68 @@ function shovoRenderHints(q){
   if(document.readyState!=='loading') paint();
   else document.addEventListener('DOMContentLoaded', paint);
   setInterval(paint, 5000);
+})();
+
+// ── Multiple RTL dates in one session ─────────────────────────────────
+// A lister often works a pile spanning more than one intake date. The batch
+// field holds a single value, so covering two dates meant locking in again
+// halfway through — easy to forget, and the SKUs come out wrong when you do.
+// This keeps a list of dates and marks one active; the active one is what the
+// SKU builder uses, so switching is a click rather than a re-lock.
+(function(){
+  var KEY='syg:batchdates';
+  var D={list:[], active:''};
+  try{ var r=localStorage.getItem(KEY); if(r) D=JSON.parse(r); }catch(e){}
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(D)); }catch(e){} }
+  function norm(v){
+    v=String(v||'').trim().toUpperCase().replace(/\s+/g,'');
+    if(!v) return '';
+    if(!/^RTL/.test(v)) v='RTL'+v.replace(/^RTL/,'');
+    return v.slice(0,12);
+  }
+  function add(v){ v=norm(v); if(!v||v==='RTL') return false;
+    if(D.list.indexOf(v)<0) D.list.push(v); setActive(v); return true; }
+  function remove(v){ var i=D.list.indexOf(v); if(i<0) return;
+    D.list.splice(i,1); if(D.active===v) D.active=D.list[0]||''; save(); paint(); apply(); }
+  function setActive(v){ D.active=v; save(); paint(); apply(); }
+  function apply(){
+    if(!D.active) return;
+    try{ LISTER_BATCH = D.active; }catch(e){}
+    ['tbListerBatch','listerBatch'].forEach(function(id){
+      var f=document.getElementById(id); if(f) f.value=D.active; });
+  }
+  function paint(){
+    var host=document.getElementById('wbDates'); if(!host) return;
+    host.innerHTML='<div class="bd-row">'+
+      D.list.map(function(v){
+        return '<button type="button" class="bd-chip'+(v===D.active?' on':'')+'" data-v="'+v+'">'+
+          v+'<i data-x="'+v+'" title="Remove">&times;</i></button>'; }).join('')+
+      '<button type="button" class="bd-add" id="bdAdd">+ date</button></div>'+
+      (D.list.length>1
+        ? '<div class="bd-note">Stamping new items <b>'+D.active+'</b> \u2014 click another to switch.</div>'
+        : '<div class="bd-note">Add another date if this pile spans more than one intake.</div>');
+  }
+  function wire(){
+    var host=document.getElementById('wbDates'); if(!host){ return setTimeout(wire,800); }
+    if(host._b) return; host._b=true;
+    host.addEventListener('click',function(e){
+      var x=e.target.closest('[data-x]');
+      if(x){ e.stopPropagation(); remove(x.getAttribute('data-x')); return; }
+      var c=e.target.closest('[data-v]');
+      if(c){ setActive(c.getAttribute('data-v')); return; }
+      if(e.target.closest('#bdAdd')){ var v=prompt('Add a batch date (e.g. RTL0911)'); if(v) add(v); }
+    });
+    if(!D.list.length){
+      var cur=''; try{ cur=LISTER_BATCH||''; }catch(e){}
+      if(!cur){ var f=document.getElementById('tbListerBatch'); cur=f? f.value : ''; }
+      if(cur && norm(cur)!=='RTL') add(cur);
+    }
+    paint();
+  }
+  window.sygBatchDates={ add:add, remove:remove, setActive:setActive,
+    list:function(){ return D.list.slice(); }, active:function(){ return D.active; } };
+  if(document.readyState!=='loading') wire();
+  else document.addEventListener('DOMContentLoaded', wire);
 })();
 
 // ── Wan Board keyboard shortcuts ──────────────────────────────────────
