@@ -4508,7 +4508,10 @@ html[data-rank="10"] .wb-grid::after{ color:rgba(251,191,36,.65); }
    Sources sit on top because their age decides whether anything below is
    true; the four actions are the navigation; list and detail sit under. */
 
-#phantomZone{display:flex;flex-direction:column;gap:0}
+/* MUST be scoped to .show. An unscoped display:flex here overrode the base
+   rule's display:none and pinned the whole module open on top of everything
+   else — the app looked stuck in Phantom Zone. */
+#phantomZone.show{display:flex;flex-direction:column;gap:0}
 
 /* — sources — */
 #phantomZone .pz-srcbar{display:flex;align-items:stretch;gap:8px;padding:14px 22px 0;flex-wrap:wrap}
