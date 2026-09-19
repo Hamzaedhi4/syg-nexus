@@ -4226,6 +4226,10 @@ html.nx-sb-off .nx-chrome .nxh-sb{ display:none; }
    Five action tabs fit on one line at any sane column width. */
 #phantomZone .pz-tab.k-check.on{border-bottom-color:var(--nx-warn)}
 #phantomZone .pz-tab.k-check.on b,#phantomZone .pz-tab.k-check.on span{color:var(--nx-warn)}
+#phantomZone .pz-worked{margin-top:8px;width:100%;font:600 13px var(--nx-sans);color:#fff;
+  background:var(--nx-ok);border:0;border-radius:9px;padding:12px;cursor:pointer}
+#phantomZone .pz-worked:hover{background:#15803D}
+#phantomZone .pz-done.spent{opacity:.5;cursor:default}
 </style>
 <style id="nx-trace-css">
 #traceZone{position:fixed;top:var(--nx-hd-h);left:var(--nx-sb-w);right:0;bottom:0;display:none;
@@ -37399,7 +37403,10 @@ document.addEventListener('click',function(e){
   }
 
   function renderList(){
-    tabs(); metrics(); renderTypes();
+    // metrics() drew the old strip of counters that the redesign replaced with
+    // the action cards — tabs() fills those now. Calling a function that no
+    // longer exists threw on every render, so the list never drew at all.
+    tabs(); renderTypes();
     var l=$('pzList'), rows=filtered();
     if(!rows.length){ l.innerHTML='<div style="padding:50px 24px;text-align:center;color:var(--nx-muted)"><div style="font-size:38px;margin-bottom:8px">✓</div>Nothing here.</div>'; return; }
     var order=['phantom','nostock','phantomstock','mismatch','unlisted','check','ghost'], html='';
@@ -37492,7 +37499,16 @@ document.addEventListener('click',function(e){
             ? '<label class="pz-arm" data-tip="Tick once you\u2019re sure it\u2019s gone."><input type="checkbox" id="pzArm">'+
               (p.kind==='check'?'I walked over \u2014 it\u2019s not on the shelf':p.kind==='ghost'?'I checked the SKU \u2014 this shouldn\u2019t be live':'Confirmed \u2014 the unit is gone')+'</label>'
             : '')+
-          '<button type="button" class="pz-done '+(p.kind==='unlisted'||p.kind==='mismatch'?'g':p.kind==='phantomstock'?'v':'r')+'" id="pzDone">Done \u2014 clear it from the list</button>'+
+          // Two stages on purpose. The first button only OPENS Marketplace
+          // Connect \u2014 the actual ending happens there, by hand. Clearing the
+          // row before that is done would mark work as finished that nobody
+          // did, so "mark as worked on" stays hidden until MC has been opened.
+          '<button type="button" class="pz-done '+(p.kind==='unlisted'||p.kind==='mismatch'?'g':p.kind==='phantomstock'?'v':'r')+'" id="pzDone">'+
+            (p.kind==='unlisted' ? 'Open Marketplace Connect to list it'
+             : p.kind==='mismatch' ? 'Open Shopify to fix the status'
+             : p.kind==='phantomstock' ? 'Open Shopify to fix the quantity'
+             : 'Open Marketplace Connect to end it')+'</button>'+
+          '<button type="button" class="pz-worked" id="pzWorked" hidden>\u2713 Mark as worked on \u2014 clear it from the list</button>'+
         '</div>';
     var armEl=$('pzArm');
     if(armEl) armEl.addEventListener('change',function(e){
@@ -37525,12 +37541,23 @@ document.addEventListener('click',function(e){
     if(sel) sel.addEventListener('change',syncHint);
     var go=$('pzActGo');
     if(go) go.addEventListener('click',function(){ if(sel) runAction(sel.value,p); });
-    var doneBtn=$('pzDone');
+    var doneBtn=$('pzDone'), workedBtn=$('pzWorked');
     if(doneBtn) doneBtn.addEventListener('click',function(){
       var ck=$('pzArm');
       if(ck && !ck.checked){ toast('Tick the confirmation first'); ck.focus(); return; }
-      pzClear();
+      // Send them where the work actually happens.
+      if(p.kind==='mismatch' || p.kind==='phantomstock'){
+        runAction('shopify',p);
+      } else {
+        mcOpen(p.sku,function(pre){
+          if(pre===false) toast('MC opened, but the search was not pre-filled \u2014 extension not loaded');
+        });
+      }
+      doneBtn.classList.add('spent');
+      doneBtn.textContent='Opened \u2014 finish it there';
+      if(workedBtn){ workedBtn.hidden=false; workedBtn.focus(); }
     });
+    if(workedBtn) workedBtn.addEventListener('click',function(){ pzClear(); });
 
   }
   // The screen showed numbers but never said what to do with them. This bar
@@ -37565,7 +37592,7 @@ document.addEventListener('click',function(e){
   }
   var VIEW='list';
   function render(){
-    if(VIEW==='batches'){ tabs(); metrics(); renderBatches(); }
+    if(VIEW==='batches'){ tabs(); renderBatches(); }
     else renderList();
     renderWork(); renderGuide();
     var sw=$('pzViewSw'); if(sw) sw.textContent = VIEW==='batches' ? '\u2190 back to the list' : 'Batches';
