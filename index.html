@@ -4230,6 +4230,18 @@ html.nx-sb-off .nx-chrome .nxh-sb{ display:none; }
   background:var(--nx-ok);border:0;border-radius:9px;padding:12px;cursor:pointer}
 #phantomZone .pz-worked:hover{background:#15803D}
 #phantomZone .pz-done.spent{opacity:.5;cursor:default}
+#phantomZone .pz-story{padding:13px 24px 15px;border-bottom:1px solid var(--nx-line);background:var(--nx-card)}
+#phantomZone .pz-story p{margin:0;font-size:13.5px;line-height:1.65;color:var(--nx-ink)}
+#phantomZone .pz-story p + p{margin-top:7px}
+#phantomZone .pz-story .hi{font-weight:700;color:var(--nx-ink)}
+#phantomZone .pz-story .hi.bad{color:var(--nx-bad)}
+#phantomZone .pz-story .hi.warn{color:var(--nx-warn)}
+#phantomZone .pz-story .hi.ok{color:var(--nx-ok)}
+#phantomZone .pz-story .hi.muted{color:var(--nx-muted)}
+#phantomZone .pz-story-next{font-weight:600;color:var(--nx-blue) !important}
+#phantomZone .pz-story-found{font-size:12.5px !important;color:var(--nx-muted) !important;margin-top:10px !important}
+#phantomZone .pz-story-load{color:var(--nx-muted) !important}
+#phantomZone .pz-story-warn{color:var(--nx-bad) !important;font-size:12.5px !important}
 </style>
 <style id="nx-trace-css">
 #traceZone{position:fixed;top:var(--nx-hd-h);left:var(--nx-sb-w);right:0;bottom:0;display:none;
@@ -37044,6 +37056,27 @@ document.addEventListener('click',function(e){
 // Connect with the SKU searched (MC_AUTOFILL_REQUEST) — eBay can't end directly.
 (function(){
   var PZ=[], idx=0, FILTER='all', ended=0, LAST=null;
+
+  // ── Decisions already made ──────────────────────────────────────────
+  // Every scan rebuilds the list from the reports, so anything judged last
+  // time comes straight back. That is right for most things — a phantom is
+  // still a phantom until the listing comes down — but wrong for returns:
+  // an item that came back and went on the shelf still reads as "sold" in
+  // Shopify until someone restocks it, so the tool would keep telling you to
+  // end a listing that should stay live. Remembering the call stops that.
+  var PZ_SEEN_KEY='syg:pzResolved';
+  var RESOLVED={};
+  try{ RESOLVED=JSON.parse(localStorage.getItem(PZ_SEEN_KEY)||'{}'); }catch(e){ RESOLVED={}; }
+  function resolveKey(sku){ return skuKey(sku); }
+  function markResolved(sku, how){
+    RESOLVED[resolveKey(sku)]={how:how, at:Date.now()};
+    try{ localStorage.setItem(PZ_SEEN_KEY, JSON.stringify(RESOLVED)); }catch(e){}
+  }
+  function unresolve(sku){
+    delete RESOLVED[resolveKey(sku)];
+    try{ localStorage.setItem(PZ_SEEN_KEY, JSON.stringify(RESOLVED)); }catch(e){}
+  }
+  function resolvedAs(sku){ var r=RESOLVED[resolveKey(sku)]; return r? r.how : null; }
   // Airtight SKU key. eBay stores labels with spaces/slashes/case that Shopify
   // doesn't ('A5 BIN1' vs 'A5BIN1', 'i3/bin2' vs 'I3 BIN2'), which threw real
   // products into GHOST. Collapse everything that only varies by formatting,
@@ -37269,6 +37302,10 @@ document.addEventListener('click',function(e){
         sold:'n/a — never listed'});
     });
 
+    // An item judged "returned, back on the shelf" is not a phantom, whatever
+    // Shopify still says. Keep it out until the stock is actually corrected.
+    PZ=PZ.filter(function(p){ return resolvedAs(p.sku)!=='returned'; });
+
     var order={phantom:0,phantomstock:1,check:2,nostock:3,mismatch:4,ghost:5,unlisted:6};
     PZ.sort(function(a,b){return order[a.kind]-order[b.kind];});
     idx=0; render(); toast('Scanned · '+PZ.length+' phantom'+(PZ.length===1?'':'s')+' found');
@@ -37433,24 +37470,121 @@ document.addEventListener('click',function(e){
     orders:  {id:'orders',  label:'Check if someone ordered it',     hint:'Searches your eBay orders for this SKU \u2014 do this before ending anything.'},
     msg:     {id:'msg',     label:'Message the buyer',               hint:'Opens the eBay order with the cancellation message ready. Only if there is an order.'},
     ebay:    {id:'ebay',    label:'See the live eBay listing',       hint:'Opens the listing as buyers see it right now.'},
-    history: {id:'history', label:'Show its full history',           hint:'Opens Trace \u2014 every time this SKU has sold, with dates and tracking.'}
+    history: {id:'history', label:'Show its full history',           hint:'Opens Trace \u2014 every time this SKU has sold, with dates and tracking.'},
+    // Returns are the case the reports cannot see: no refund column exists in
+    // the Paid & Shipped export, so an item that came back still reads as sold
+    // until somebody restocks it. Ending that listing would mean the unit never
+    // sells again — the opposite of what the tool is for.
+    happened:{id:'happened',label:'What happened?',
+              hint:'Reads the eBay order itself \u2014 refunded, returned, cancelled or shipped \u2014 and says so plainly. Use this before ending anything.'},
+    returned:{id:'returned',label:'It came back \u2014 returned or refunded',
+              hint:'Keeps the listing up, opens Shopify to put the stock back, and stops this item being flagged as sold again.'},
+    byitem:  {id:'byitem',  label:'Find the order by item number',
+              hint:'Copies the eBay item number and opens your orders, set to search by Item ID.'},
+    bysku:   {id:'bysku',   label:'Find the order by SKU',
+              hint:'Copies the SKU and opens your orders, set to search by Custom label.'}
   };
   function actionsFor(p){
     var order;
-    if(p.kind==='phantom')           order=['orders','msg','mc','shopify','ebay','history'];
-    else if(p.kind==='check')        order=['history','orders','ebay','mc','shopify','msg'];
+    if(p.kind==='phantom')           order=['happened','returned','byitem','msg','mc','shopify','ebay','history'];
+    else if(p.kind==='check')        order=['happened','history','returned','byitem','ebay','mc','shopify'];
     else if(p.kind==='ghost')        order=['ebay','history','shopify','mc','orders','msg'];
-    else if(p.kind==='phantomstock') order=['shopify','orders','history','msg','mc'];
-    else if(p.kind==='nostock')      order=['shopify','history','ebay','mc','orders'];
+    else if(p.kind==='phantomstock') order=['happened','shopify','history','msg','mc'];
+    else if(p.kind==='nostock')      order=['happened','returned','shopify','history','ebay','mc'];
     else if(p.kind==='mismatch')     order=['shopify','ebay','history','mc','orders'];
     else                             order=['mc','shopify','history','ebay'];
     return order.map(function(k){ return PZ_ACTIONS[k]; });
   }
+  // Ask eBay directly what became of this SKU. The reports cannot answer —
+  // there is no refund or return column in either export — but the orders page
+  // states it outright, so read it there instead of inferring from stock.
+  function askWhatHappened(p){
+    var box=$('pzStory');
+    if(box){ box.innerHTML='<p class="pz-story-load">Reading the eBay order for '+esc(p.sku)+'\u2026</p>'; }
+    if(typeof window.nexusAskExtension!=='function'){
+      if(box){ box.innerHTML=storyFor(p)+'<p class="pz-story-warn">The Nexus extension is not loaded, so the eBay order cannot be read from here.</p>'; }
+      return;
+    }
+    window.nexusAskExtension('EBAY_WHAT_HAPPENED',{sku:p.sku},60000)
+      .then(function(res){ showHappened(p, (res&&res.rows)||[]); })
+      .catch(function(e){
+        if(box){ box.innerHTML=storyFor(p)+'<p class="pz-story-warn">Could not read the order: '+esc(String(e&&e.message?e.message:e))+'</p>'; }
+      });
+  }
+
+  function happenedVerdict(r){
+    var st=String(r.status||'').toLowerCase();
+    if(r.hasReturn || /return/.test(st)) return {tone:'warn',
+      head:'It came back.',
+      body:'eBay shows a return on this order'+(r.total==='$0.00'?' and the total is $0.00, so it was refunded':'')+
+           '. <b>The unit should be on your shelf.</b> Do not end the listing \u2014 put the stock back instead.'};
+    if(/refund/.test(st)) return {tone:'warn',
+      head:'Refunded.',
+      body:'The buyer was refunded on this order. If the unit came back it is yours again \u2014 check the shelf, restock it, and leave the listing up.'};
+    if(/cancel/.test(st)) return {tone:'warn',
+      head:'Cancelled.',
+      body:'This order was cancelled, so the unit never left. Restock it and keep the listing live.'};
+    if(/dispute|case/.test(st)) return {tone:'warn',
+      head:'There is a case open.',
+      body:'eBay shows a dispute on this order. Settle that before touching the listing.'};
+    if(r.tracking) return {tone:'ok',
+      head:'It shipped and stayed shipped.',
+      body:'Tracking '+esc(r.tracking)+', no return or refund on the order. The unit really is gone \u2014 safe to end the listing.'};
+    return {tone:'plain', head:'Order found, nothing unusual on it.',
+      body:'Status reads \u201c'+esc(r.status||'\u2014')+'\u201d with no return or refund attached.'};
+  }
+
+  function showHappened(p, rows){
+    var box=$('pzStory'); if(!box) return;
+    if(!rows.length){
+      box.innerHTML=storyFor(p)+
+        '<p class="pz-story-found"><b class="hi muted">No eBay order found</b> for this SKU. '+
+        'If the unit is gone it left another way \u2014 in store, or on Shopify directly.</p>';
+      return;
+    }
+    // Newest first: the most recent order is the one being asked about.
+    var html=rows.slice(0,4).map(function(r){
+      var v=happenedVerdict(r);
+      var col = v.tone==='warn' ? 'var(--nx-warn)' : v.tone==='ok' ? 'var(--nx-ok)' : 'var(--nx-ink)';
+      return '<div style="margin-top:8px;padding:9px 11px;border-radius:8px;background:var(--nx-bg);border:1px solid var(--nx-line)">'+
+        '<div style="font:700 12.5px var(--nx-sans);color:'+col+'">'+v.head+'</div>'+
+        '<div style="font-size:12px;line-height:1.55;margin-top:3px">'+v.body+'</div>'+
+        '<div style="font-size:10.5px;color:var(--nx-muted);margin-top:5px">'+
+          esc(r.order||'')+(r.buyer?' \u00b7 '+esc(r.buyer):'')+(r.sold?' \u00b7 '+esc(r.sold):'')+
+          (r.qty?' \u00b7 qty '+esc(r.qty):'')+(r.total?' \u00b7 '+esc(r.total):'')+
+        '</div>'+
+        (r.returnUrl? '<a href="'+r.returnUrl+'" target="_blank" rel="noopener" style="font-size:11px;font-weight:600">View return details \u2197</a>':'')+
+      '</div>';
+    }).join('');
+    box.innerHTML=storyFor(p)+
+      '<p class="pz-story-found">eBay has <b class="hi">'+rows.length+' order'+(rows.length===1?'':'s')+'</b> for this SKU:</p>'+html;
+  }
+
   function runAction(id,p){
     if(id==='mc'){
       mcOpen(p.sku,function(pre){ if(pre===false) toast('MC opened, but the search wasn\u2019t pre-filled \u2014 extension not loaded'); });
     } else if(id==='shopify'){
       window.open('https://admin.shopify.com/store/xpp09p-dz/products?query='+encodeURIComponent(p.sku),'_blank','noopener');
+    } else if(id==='happened'){
+      askWhatHappened(p);
+    } else if(id==='returned'){
+      markResolved(p.sku,'returned');
+      // Put the stock back where the truth lives; the listing stays up.
+      window.open('https://admin.shopify.com/store/xpp09p-dz/products?query='+encodeURIComponent(p.sku),'_blank','noopener');
+      toast('Marked as returned \u2014 restock it in Shopify. It will not be flagged as sold again.');
+      pzClear();
+    } else if(id==='byitem' || id==='bysku'){
+      // eBay's order search needs the "Search by" dropdown set to match what
+      // you paste, or it silently finds nothing. Copy the value, then hand the
+      // extension the field to select so it is done on arrival.
+      var val = (id==='byitem') ? (p.item||p.sku) : p.sku;
+      var field = (id==='byitem') ? 'itemid' : 'customlabel';
+      try{ navigator.clipboard && navigator.clipboard.writeText(val); }catch(e){}
+      if(typeof window.nexusAskExtension==='function'){
+        window.nexusAskExtension('EBAY_ORDER_SEARCH',{value:val, field:field},20000).catch(function(){});
+      }
+      window.open('https://www.ebay.com/sh/ord/?filter=status:ALL#syg-ordsearch='+field+':'+encodeURIComponent(val),'_blank','noopener');
+      toast('Copied '+val+' \u2014 orders opening, search set to '+(id==='byitem'?'Item ID':'Custom label'));
     } else if(id==='orders'){
       window.open('https://www.ebay.com/sh/ord/?filter=status:ALL&q='+encodeURIComponent(p.sku),'_blank','noopener');
     } else if(id==='msg'){
@@ -37467,6 +37601,64 @@ document.addEventListener('click',function(e){
     }
   }
 
+  // ── The story ───────────────────────────────────────────────────────
+  // Everything else on the card is a field: a status, a count, a verdict tag.
+  // This is the one place that says what is actually going on in a sentence,
+  // with the numbers that drive the decision picked out. It is the first thing
+  // read, so it sits directly under the title.
+  function hi(v,tone){ return '<b class="hi '+(tone||'')+'">'+esc(v)+'</b>'; }
+
+  function storyFor(p){
+    var bits=[];
+    // The shop line is written two ways depending on the bucket \u2014
+    // "archived \u00b7 stock 0" and "active \u00b7 1 in stock" \u2014 so match both
+    // rather than one and silently drop the sentence for the other.
+    var sh=(p.shop||'');
+    var shopQty = sh.match(/(-?\d+)\s*in stock/) || sh.match(/stock\s*(-?\d+)/);
+    var qty = shopQty ? Number(shopQty[1]) : null;
+    var availN = (p.avail||'').match(/(\d+)/);
+    var av = availN ? Number(availN[1]) : null;
+    var soldTxt = p.sold||'';
+    // "n/a \u2014 never listed" is not a sale. Reading it as one told a lister
+    // an item had shipped when it had never been on eBay at all.
+    var didSell = !!soldTxt && !/not on report|never listed|^n\/a/i.test(soldTxt);
+    var tracked = /tracking/i.test(soldTxt);
+    var when = (soldTxt.match(/([A-Z][a-z]{2}-\d{2}-\d{2})/)||[])[1];
+
+    // What happened to the unit
+    if(didSell && tracked) bits.push('This '+hi('sold and shipped','bad')+(when? ' on '+hi(when):'')+', so the buyer has it.');
+    else if(didSell)       bits.push('This shows as '+hi('sold','warn')+(when? ' on '+hi(when):'')+', but '+hi('no carrier ever scanned it','warn')+'.');
+    else                   bits.push('There is '+hi('no eBay sale','muted')+' on record for it.');
+
+    // What Shopify believes
+    if(qty!==null){
+      var st=sh.split('\u00b7')[0].trim().replace(/\s*\(Shopify\)/i,'');
+      if(qty<0)        bits.push('Shopify is at '+hi(qty+' in stock','bad')+' \u2014 it sold more than you had.');
+      else if(qty===0) bits.push('Shopify has '+hi('none left','bad')+'.');
+      else             bits.push('Shopify still shows '+hi(qty+' in stock','ok')+(st&&st!=='active'? ' but the product is '+hi(st,'warn') : '')+'.');
+    } else if(/no Shopify/i.test(p.shop||'')){
+      bits.push(hi('No Shopify product','warn')+' carries this SKU at all.');
+    }
+
+    // What a buyer sees right now — the part that decides urgency
+    if(av && av>0) bits.push('On eBay it is '+hi('still buyable','bad')+(av>1? ' with '+hi(av+' available','bad') : '')+'.');
+    else if(/not listed/i.test(p.ebay||'')) bits.push('It is '+hi('not on eBay','muted')+' at the moment.');
+
+    return '<p>'+bits.join(' ')+'</p>'+
+      '<p class="pz-story-next">'+nextLine(p)+'</p>';
+  }
+
+  // One line on what to do, in the same voice.
+  function nextLine(p){
+    if(p.kind==='phantom')      return 'Check it was not returned, then take the listing down.';
+    if(p.kind==='nostock')      return 'Most likely sold over the counter \u2014 take the listing down.';
+    if(p.kind==='mismatch')     return 'The unit is probably here. Fix the status rather than ending it.';
+    if(p.kind==='phantomstock') return 'Correct the quantity in Shopify so it stops coming back.';
+    if(p.kind==='unlisted')     return 'Nothing wrong \u2014 it just needs putting on eBay.';
+    if(p.kind==='ghost')        return 'Check the SKU before doing anything.';
+    return 'Look before acting.';
+  }
+
   function renderWork(){
     var w=$('pzWork');
     if(!PZ.length){ w.innerHTML='<div class="pz-empty"><div class="big">🎉</div><b>All clear.</b><br>Drop the two reports and press Scan to check again.</div>'; return; }
@@ -37475,6 +37667,7 @@ document.addEventListener('click',function(e){
     var soldClass=p.kind==='check'?'warnb':(/tracking/i.test(p.sold)&&/\d/.test(p.sold)?'good':'');
     w.innerHTML=
       '<div class="pz-wtop k-'+p.kind+'"><div class="pz-title">'+esc(p.name)+'</div><div class="pz-spec">'+esc(p.spec||p.sku)+'</div><span class="pz-wtag k-'+p.kind+'">'+km.tag+'</span></div>'+
+      '<div class="pz-story" id="pzStory">'+storyFor(p)+'</div>'+
       '<div class="pz-wbody">'+
         '<div class="pz-cmp">'+
           '<div class="pz-src '+(p.kind==='ghost'?'':'bad')+'" data-tip="What OUR system thinks. Archived or zero stock = we believe it\u2019s gone."><div class="sh"><span class="d"></span>Shopify</div><div class="val">'+esc(p.shop)+'</div></div>'+
