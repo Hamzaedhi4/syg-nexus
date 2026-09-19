@@ -38823,20 +38823,49 @@ function shovoRenderHints(q){
   // Run the extra dates after the main one. The button's own handler fires
   // first for the field's value; this queues the rest behind it, spaced out so
   // each pass is a separate relay send rather than four at once.
+  // Run the extra suffixes after the one in the field. This is driven by
+  // programmatically clicking the same button, which re-enters this handler —
+  // so without a guard each queued click re-queued the entire list. With a
+  // dozen chips that compounds into thousands of overlapping timers all
+  // writing to one field, and the suffix that actually gets sent is whichever
+  // happened to be in the box at that instant. Hence the guard, and hence
+  // running strictly one at a time rather than on a fan-out of timers.
+  var RUNNING=false;
   function hookGo(){
     var go=document.getElementById('wbBulkGo'); if(!go){ return setTimeout(hookGo,800); }
     if(go._sygMulti) return; go._sygMulti=true;
-    go.addEventListener('click',function(){
+
+    go.addEventListener('click',function(e){
+      if(RUNNING) return;                 // this click is one of ours
       var extra=list(); if(!extra.length) return;
       var f=document.getElementById('wbBulkDate'); if(!f) return;
-      extra.forEach(function(v,i){
-        setTimeout(function(){
-          f.value=v;
-          f.dispatchEvent(new Event('input',{bubbles:true}));
-          go.click();
-        }, (i+1)*2500);
-      });
+
+      RUNNING=true;
+      var queue=extra.slice();
+      var done=0;
+      function step(){
+        if(!queue.length){
+          RUNNING=false;
+          note('Sent '+(done+1)+' batches: '+[f.value].concat(extra).join(', '));
+          return;
+        }
+        var v=queue.shift();
+        f.value=v;
+        f.dispatchEvent(new Event('input',{bubbles:true}));
+        done++;
+        note('Sending '+v+' \u2014 '+queue.length+' left after this\u2026');
+        // Space them out so each is a separate relay send, not a burst.
+        setTimeout(function(){ go.click(); setTimeout(step, 2600); }, 250);
+      }
+      // The field's own value is sent by the page's handler on this very
+      // click; ours start after it.
+      setTimeout(step, 2600);
     }, true);
+  }
+
+  function note(msg){
+    var el=document.getElementById('wbBulkNote');
+    if(el){ el.textContent=msg; el.className='wb-bulk-note'; }
   }
 
   window.sygBulkDates={ add:add, remove:remove, list:list };
