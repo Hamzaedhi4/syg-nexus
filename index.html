@@ -4256,6 +4256,11 @@ html.nx-sb-off .nx-chrome .nxh-sb{ display:none; }
   #phantomZone .pz-load-spin{animation:none;border-top-color:var(--nx-line)}
   #phantomZone .pz-load-dots i.now{animation:none}
 }
+#phantomZone .pz-byrow{margin-top:7px}
+#phantomZone .pz-bylab{flex:0 0 auto;align-self:center;font:600 11.5px var(--nx-sans);color:var(--nx-muted);
+  white-space:nowrap;margin-right:2px}
+#phantomZone .pz-by{flex:1;min-width:0;height:36px;font-size:12.5px}
+#phantomZone .pz-story-bg{font-size:11.5px !important;color:var(--nx-muted) !important;margin-top:9px !important}
 </style>
 <style id="nx-trace-css">
 #traceZone{position:fixed;top:var(--nx-hd-h);left:var(--nx-sb-w);right:0;bottom:0;display:none;
@@ -37520,12 +37525,14 @@ document.addEventListener('click',function(e){
     // \u2014 the steps advance on a clock, and the real result replaces them
     // whenever it lands, however far along the sequence has got.
     var steps=[
-      'Opening your eBay orders\u2026',
-      'Setting Search by to Item ID\u2026',
-      'Searching item number '+esc(p.item||p.sku)+'\u2026',
+      'Opening your eBay orders in the background\u2026',
+      'Setting Search by to '+(by==='itemid'?'Item ID':'Custom label')+'\u2026',
+      'Searching '+esc(by==='itemid'?(p.item||p.sku):p.sku)+'\u2026',
       'Waiting for the results to load\u2026',
       'Reading the order\u2026'
     ];
+    // Say it plainly: nothing is going to take the screen away mid-task.
+    var bgNote='<p class="pz-story-bg">Running in a background tab \u2014 you can stay here.</p>';
     var si=0, timer=null;
     // If the lister clicks another row while this is running, the old timer
     // would keep painting its steps into the new card. Tie the sequence to the
@@ -37542,7 +37549,7 @@ document.addEventListener('click',function(e){
           '<div class="pz-load-dots">'+
             steps.map(function(_,i){ return '<i class="'+(i<si?'done':i===si?'now':'')+'"></i>'; }).join('')+
           '</div>'+
-        '</div></div>';
+        '</div></div>'+bgNote;
     }
     paintStep();
     timer=setInterval(function(){
@@ -37556,7 +37563,9 @@ document.addEventListener('click',function(e){
     }
     // The item number is what the orders page can search precisely; the SKU is
     // only the fallback when a row has no item number (an unlisted product).
-    window.nexusAskExtension('EBAY_WHAT_HAPPENED',{sku:p.sku, item:p.item},90000)
+    var by=searchBy(p);
+    window.nexusAskExtension('EBAY_WHAT_HAPPENED',
+      {sku:p.sku, item:(by==='itemid'? (p.item||'') : ''), field:by},90000)
       .then(function(res){
         stopLoading();
         if(res && res.ok===false){
@@ -37621,11 +37630,24 @@ document.addEventListener('click',function(e){
     var lbl=(res&&res.searchedBy==='itemid')?'item number '+esc(res.searchedFor):'SKU '+esc(p.sku);
     // If the grid never visibly changed, say so rather than presenting the
     // rows as though they answered the question.
-    var warn=(res&&res.stale)
-      ? '<p class="pz-story-warn">The orders grid did not visibly refresh \u2014 check these are really for '+lbl+'.</p>' : '';
+    var warn='';
+    if(res&&res.stale) warn+='<p class="pz-story-warn">The orders grid did not visibly refresh \u2014 check these are really for '+lbl+'.</p>';
+    if(res&&res.fieldSet===false) warn+='<p class="pz-story-warn">The Search by dropdown could not be confirmed \u2014 check it says Item ID on the page.</p>';
     box.innerHTML=storyFor(p)+warn+
       '<p class="pz-story-found">Searched '+lbl+' \u2014 <b class="hi">'+rows.length+' order'+(rows.length===1?'':'s')+'</b> found:</p>'+html;
   }
+
+  // Which value the eBay lookups paste. Item number is exact for one listing;
+  // SKU catches every order a unit ever had, which matters for repeat sellers
+  // and for anything whose listing was relisted under a new number.
+  var SEARCH_BY='itemid';
+  function searchBy(p){
+    var sel=$('pzBy');
+    var v = sel ? sel.value : SEARCH_BY;
+    if(v==='itemid' && !p.item) v='customlabel';   // nothing to search with
+    return v;
+  }
+  function searchValue(p){ return searchBy(p)==='itemid' ? (p.item||p.sku) : p.sku; }
 
   function runAction(id,p){
     if(id==='mc'){
@@ -37644,8 +37666,10 @@ document.addEventListener('click',function(e){
       // eBay's order search needs the "Search by" dropdown set to match what
       // you paste, or it silently finds nothing. Copy the value, then hand the
       // extension the field to select so it is done on arrival.
-      var val = (id==='byitem') ? (p.item||p.sku) : p.sku;
-      var field = (id==='byitem') ? 'itemid' : 'customlabel';
+      // The two explicit options still force their field; anything else
+      // follows the Search eBay by picker.
+      var field = (id==='byitem') ? 'itemid' : (id==='bysku') ? 'customlabel' : searchBy(p);
+      var val   = field==='itemid' ? (p.item||p.sku) : p.sku;
       try{ navigator.clipboard && navigator.clipboard.writeText(val); }catch(e){}
       if(typeof window.nexusAskExtension==='function'){
         window.nexusAskExtension('EBAY_ORDER_SEARCH',{value:val, field:field},20000).catch(function(){});
@@ -37753,6 +37777,13 @@ document.addEventListener('click',function(e){
               actionsFor(p).map(function(a){ return '<option value="'+a.id+'">'+a.label+'</option>'; }).join('')+
             '</select>'+
             '<button type="button" class="pz-actgo" id="pzActGo">Go</button>'+
+          '</div>'+
+          '<div class="pz-actrow pz-byrow">'+
+            '<label class="pz-bylab" for="pzBy">Search eBay by</label>'+
+            '<select id="pzBy" class="pz-act pz-by" data-tip="Which value to paste into the orders page. Item number finds the one listing; SKU finds every order that unit ever had.">'+
+              (p.item? '<option value="itemid">Item number \u2014 '+esc(p.item)+'</option>' : '')+
+              '<option value="customlabel"'+(p.item?'':' selected')+'>SKU \u2014 '+esc(p.sku)+'</option>'+
+            '</select>'+
           '</div>'+
           '<div class="pz-acthint" id="pzActHint">'+esc(actionsFor(p)[0].hint)+'</div>'+
           (p.kind==='phantom'||p.kind==='check'||p.kind==='ghost'||p.kind==='nostock'
