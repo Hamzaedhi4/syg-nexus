@@ -4242,6 +4242,20 @@ html.nx-sb-off .nx-chrome .nxh-sb{ display:none; }
 #phantomZone .pz-story-found{font-size:12.5px !important;color:var(--nx-muted) !important;margin-top:10px !important}
 #phantomZone .pz-story-load{color:var(--nx-muted) !important}
 #phantomZone .pz-story-warn{color:var(--nx-bad) !important;font-size:12.5px !important}
+#phantomZone .pz-load{display:flex;gap:12px;align-items:flex-start;padding:2px 0}
+#phantomZone .pz-load-spin{width:18px;height:18px;flex:none;margin-top:1px;border-radius:50%;
+  border:2px solid var(--nx-line);border-top-color:var(--nx-blue);animation:pzSpin .8s linear infinite}
+@keyframes pzSpin{to{transform:rotate(360deg)}}
+#phantomZone .pz-load-txt b{display:block;font:600 13px var(--nx-sans);color:var(--nx-ink)}
+#phantomZone .pz-load-dots{display:flex;gap:5px;margin-top:7px}
+#phantomZone .pz-load-dots i{width:22px;height:3px;border-radius:2px;background:var(--nx-line);transition:background .25s}
+#phantomZone .pz-load-dots i.done{background:var(--nx-ok)}
+#phantomZone .pz-load-dots i.now{background:var(--nx-blue);animation:pzPulse 1.1s ease-in-out infinite}
+@keyframes pzPulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){
+  #phantomZone .pz-load-spin{animation:none;border-top-color:var(--nx-line)}
+  #phantomZone .pz-load-dots i.now{animation:none}
+}
 </style>
 <style id="nx-trace-css">
 #traceZone{position:fixed;top:var(--nx-hd-h);left:var(--nx-sb-w);right:0;bottom:0;display:none;
@@ -37500,14 +37514,61 @@ document.addEventListener('click',function(e){
   // states it outright, so read it there instead of inferring from stock.
   function askWhatHappened(p){
     var box=$('pzStory');
-    if(box){ box.innerHTML='<p class="pz-story-load">Reading the eBay order for '+esc(p.sku)+'\u2026</p>'; }
+    // This takes 5-15 seconds: a tab opens, a dropdown is set, a search runs,
+    // a grid reloads. A single frozen line for that long reads as broken, so
+    // show the steps as they happen. The timings are indicative, not measured
+    // \u2014 the steps advance on a clock, and the real result replaces them
+    // whenever it lands, however far along the sequence has got.
+    var steps=[
+      'Opening your eBay orders\u2026',
+      'Setting Search by to Item ID\u2026',
+      'Searching item number '+esc(p.item||p.sku)+'\u2026',
+      'Waiting for the results to load\u2026',
+      'Reading the order\u2026'
+    ];
+    var si=0, timer=null;
+    // If the lister clicks another row while this is running, the old timer
+    // would keep painting its steps into the new card. Tie the sequence to the
+    // SKU it started for and stop the moment the panel is showing something else.
+    var forSku=p.sku;
+    function stillCurrent(){ return PZ[idx] && PZ[idx].sku===forSku; }
+    function paintStep(){
+      if(!box) return;
+      if(!stillCurrent()){ stopLoading(); return; }
+      box.innerHTML='<div class="pz-load">'+
+        '<div class="pz-load-spin"></div>'+
+        '<div class="pz-load-txt">'+
+          '<b>'+steps[si]+'</b>'+
+          '<div class="pz-load-dots">'+
+            steps.map(function(_,i){ return '<i class="'+(i<si?'done':i===si?'now':'')+'"></i>'; }).join('')+
+          '</div>'+
+        '</div></div>';
+    }
+    paintStep();
+    timer=setInterval(function(){
+      if(si<steps.length-1){ si++; paintStep(); }
+    }, 1600);
+    function stopLoading(){ if(timer){ clearInterval(timer); timer=null; } }
     if(typeof window.nexusAskExtension!=='function'){
+      stopLoading();
       if(box){ box.innerHTML=storyFor(p)+'<p class="pz-story-warn">The Nexus extension is not loaded, so the eBay order cannot be read from here.</p>'; }
       return;
     }
-    window.nexusAskExtension('EBAY_WHAT_HAPPENED',{sku:p.sku},60000)
-      .then(function(res){ showHappened(p, (res&&res.rows)||[]); })
+    // The item number is what the orders page can search precisely; the SKU is
+    // only the fallback when a row has no item number (an unlisted product).
+    window.nexusAskExtension('EBAY_WHAT_HAPPENED',{sku:p.sku, item:p.item},90000)
+      .then(function(res){
+        stopLoading();
+        if(res && res.ok===false){
+          var b=$('pzStory');
+          if(b) b.innerHTML=storyFor(p)+'<p class="pz-story-warn">'+esc(res.error||'Could not read the order')+'</p>';
+          return;
+        }
+        if(!stillCurrent()) return;   // they moved on; do not clobber the new card
+        showHappened(p, (res&&res.rows)||[], res);
+      })
       .catch(function(e){
+        stopLoading();
         if(box){ box.innerHTML=storyFor(p)+'<p class="pz-story-warn">Could not read the order: '+esc(String(e&&e.message?e.message:e))+'</p>'; }
       });
   }
@@ -37534,11 +37595,12 @@ document.addEventListener('click',function(e){
       body:'Status reads \u201c'+esc(r.status||'\u2014')+'\u201d with no return or refund attached.'};
   }
 
-  function showHappened(p, rows){
+  function showHappened(p, rows, res){
     var box=$('pzStory'); if(!box) return;
     if(!rows.length){
+      var by=(res&&res.searchedBy==='itemid')?'item number '+esc(res.searchedFor):'SKU '+esc(p.sku);
       box.innerHTML=storyFor(p)+
-        '<p class="pz-story-found"><b class="hi muted">No eBay order found</b> for this SKU. '+
+        '<p class="pz-story-found"><b class="hi muted">No eBay order found</b> searching '+by+'. '+
         'If the unit is gone it left another way \u2014 in store, or on Shopify directly.</p>';
       return;
     }
@@ -37556,8 +37618,13 @@ document.addEventListener('click',function(e){
         (r.returnUrl? '<a href="'+r.returnUrl+'" target="_blank" rel="noopener" style="font-size:11px;font-weight:600">View return details \u2197</a>':'')+
       '</div>';
     }).join('');
-    box.innerHTML=storyFor(p)+
-      '<p class="pz-story-found">eBay has <b class="hi">'+rows.length+' order'+(rows.length===1?'':'s')+'</b> for this SKU:</p>'+html;
+    var lbl=(res&&res.searchedBy==='itemid')?'item number '+esc(res.searchedFor):'SKU '+esc(p.sku);
+    // If the grid never visibly changed, say so rather than presenting the
+    // rows as though they answered the question.
+    var warn=(res&&res.stale)
+      ? '<p class="pz-story-warn">The orders grid did not visibly refresh \u2014 check these are really for '+lbl+'.</p>' : '';
+    box.innerHTML=storyFor(p)+warn+
+      '<p class="pz-story-found">Searched '+lbl+' \u2014 <b class="hi">'+rows.length+' order'+(rows.length===1?'':'s')+'</b> found:</p>'+html;
   }
 
   function runAction(id,p){
