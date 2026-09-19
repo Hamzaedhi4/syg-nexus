@@ -11393,14 +11393,33 @@ function wbBulkNormalizeSuffix(raw){
 }
 
 function wbBuildBulkActivationPrompt(suffix){
+  // `suffix` may be one code or several. Sending one prompt per batch meant
+  // replaying the send button, which re-entered its own handler and queued
+  // the list again and again — thousands of overlapping sends, each writing
+  // to the same field, so the suffix that actually went was whichever won the
+  // race. One prompt carrying every suffix, with the order stated, removes
+  // the whole mechanism rather than guarding it.
+  var codes = Array.isArray(suffix) ? suffix.slice() : [suffix];
+  codes = codes.map(function(c){ return String(c).trim(); }).filter(Boolean);
+  var many = codes.length > 1;
+  var list = codes.join(', ');
+
   return 'BULK MARKETPLACE ACTIVATION — AUTOMATED, NO ONE IS WATCHING THIS CHAT.\n'+
     'This came in from Nexus\u2019s Wan Board. Nobody is at the keyboard to answer\n'+
     'follow-up questions. Make the most reasonable call, state it, and keep going.\n\n'+
     'Load and follow the marketplace-connect-ebay-publish skill, BULK EDIT flow.\n\n'+
-    'Batch suffix: '+suffix+'\n\n'+
-    'In Marketplace Connect (Shopify admin sidebar → Apps → Marketplace Connect,\n'+
-    'eBay.com / gadgetpirates), open Listings, clear any leftover search chip,\n'+
-    'then Bulk edit and search '+suffix+' to pull the whole batch into one grid.\n\n'+
+    (many
+      ? 'Batch suffixes ('+codes.length+'), to be done ONE AT A TIME IN THIS ORDER:\n'+
+        '  '+list+'\n\n'+
+        'Finish a batch completely — select, bulk-apply, per-row category and\n'+
+        'condition, Save — before starting the next. Do not combine suffixes in\n'+
+        'one grid or one search: each is its own pass, because a single grid\n'+
+        'mixing batches makes the per-row work impossible to check afterwards.\n\n'
+      : 'Batch suffix: '+list+'\n\n')+
+    'For each suffix in turn, in Marketplace Connect (Shopify admin sidebar →\n'+
+    'Apps → Marketplace Connect, eBay.com / gadgetpirates): open Listings,\n'+
+    'clear any leftover search chip, then Bulk edit and search that suffix to\n'+
+    'pull that batch into one grid.\n\n'+
     'Select ONLY rows that are Inactive AND have photos. Do not select Missing\n'+
     'rows (those already sold), Active/Listed rows, Errored rows, or any row\n'+
     'without a photo.\n\n'+
@@ -11415,16 +11434,33 @@ function wbBuildBulkActivationPrompt(suffix){
     'Publishing is NOT immediate — rows staying Inactive / Not Listed afterwards\n'+
     'is expected and correct. Do not re-save, and do not go looking for a publish\n'+
     'button; there isn\u2019t one.\n\n'+
-    'Report back: how many rows you selected, the category and condition you set\n'+
-    'for each, and anything you skipped and why.';
+    (many
+      ? 'If a suffix returns no matching rows, say so and move to the next one\n'+
+        'rather than stopping.\n\n'
+      : '')+
+    'Report back'+(many? ', per suffix' : '')+': how many rows you selected, the\n'+
+    'category and condition you set for each, and anything you skipped and why.';
 }
+
 
 async function wbBulkActivate(){
   var input=document.getElementById('wbBulkDate');
   var btn=document.getElementById('wbBulkGo');
   var suffix=wbBulkNormalizeSuffix(input && input.value);
 
-  if(!suffix){
+  // The chips are extra suffixes for the same run. They go in ONE prompt with
+  // the order stated, not one send each: replaying the send button to do them
+  // individually re-entered this handler and queued the list over and over.
+  var extras=(typeof window.sygBulkDates!=='undefined' && window.sygBulkDates.list)
+    ? window.sygBulkDates.list() : [];
+  var codes=[];
+  if(suffix) codes.push(suffix);
+  extras.forEach(function(v){
+    var n=wbBulkNormalizeSuffix(v);
+    if(n && codes.indexOf(n)<0) codes.push(n);
+  });
+
+  if(!codes.length){
     wbBulkNote('Type the batch suffix first — the digits the SKUs end in, e.g. 0914.','err');
     if(input) input.focus();
     return;
@@ -11435,12 +11471,14 @@ async function wbBulkActivate(){
   }
 
   if(btn){ btn.disabled=true; btn.textContent='Sending…'; }
-  wbBulkNote('Sending batch '+suffix+' to Claude…');
+  wbBulkNote(codes.length>1
+    ? 'Sending '+codes.length+' batches in one go: '+codes.join(', ')+'\u2026'
+    : 'Sending batch '+codes[0]+' to Claude\u2026');
   try{
     var res=await window.nexusAskExtension(
-      'ZHUAN_PUSH_TO_CLAUDE', {question: wbBuildBulkActivationPrompt(suffix)}, 120000);
+      'ZHUAN_PUSH_TO_CLAUDE', {question: wbBuildBulkActivationPrompt(codes)}, 120000);
     if(res && res.ok){
-      wbBulkNote('Batch '+suffix+' handed off'+
+      wbBulkNote((codes.length>1? codes.length+' batches handed off ('+codes.join(', ')+')' : 'Batch '+codes[0]+' handed off')+
         (res.text?': '+res.text.slice(0,140).replace(/\s+/g,' '):' — watch the Ask Claude panel.'),'ok');
     }else{
       wbBulkNote('Failed: '+((res&&res.error)||'no response from the Ask Claude panel'),'err');
@@ -38823,54 +38861,12 @@ function shovoRenderHints(q){
   // Run the extra dates after the main one. The button's own handler fires
   // first for the field's value; this queues the rest behind it, spaced out so
   // each pass is a separate relay send rather than four at once.
-  // Run the extra suffixes after the one in the field. This is driven by
-  // programmatically clicking the same button, which re-enters this handler —
-  // so without a guard each queued click re-queued the entire list. With a
-  // dozen chips that compounds into thousands of overlapping timers all
-  // writing to one field, and the suffix that actually gets sent is whichever
-  // happened to be in the box at that instant. Hence the guard, and hence
-  // running strictly one at a time rather than on a fan-out of timers.
-  var RUNNING=false;
-  function hookGo(){
-    var go=document.getElementById('wbBulkGo'); if(!go){ return setTimeout(hookGo,800); }
-    if(go._sygMulti) return; go._sygMulti=true;
-
-    go.addEventListener('click',function(e){
-      if(RUNNING) return;                 // this click is one of ours
-      var extra=list(); if(!extra.length) return;
-      var f=document.getElementById('wbBulkDate'); if(!f) return;
-
-      RUNNING=true;
-      var queue=extra.slice();
-      var done=0;
-      function step(){
-        if(!queue.length){
-          RUNNING=false;
-          note('Sent '+(done+1)+' batches: '+[f.value].concat(extra).join(', '));
-          return;
-        }
-        var v=queue.shift();
-        f.value=v;
-        f.dispatchEvent(new Event('input',{bubbles:true}));
-        done++;
-        note('Sending '+v+' \u2014 '+queue.length+' left after this\u2026');
-        // Space them out so each is a separate relay send, not a burst.
-        setTimeout(function(){ go.click(); setTimeout(step, 2600); }, 250);
-      }
-      // The field's own value is sent by the page's handler on this very
-      // click; ours start after it.
-      setTimeout(step, 2600);
-    }, true);
-  }
-
-  function note(msg){
-    var el=document.getElementById('wbBulkNote');
-    if(el){ el.textContent=msg; el.className='wb-bulk-note'; }
-  }
+  // No click-replaying hook any more: wbBulkActivate reads these chips
+  // directly and sends every suffix in a single prompt.
 
   window.sygBulkDates={ add:add, remove:remove, list:list };
-  if(document.readyState!=='loading'){ wire(); hookGo(); }
-  else document.addEventListener('DOMContentLoaded', function(){ wire(); hookGo(); });
+  if(document.readyState!=='loading'){ wire(); }
+  else document.addEventListener('DOMContentLoaded', function(){ wire(); });
 })();
 
 // ── Wan Board keyboard shortcuts ──────────────────────────────────────
