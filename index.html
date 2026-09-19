@@ -4192,6 +4192,40 @@ html.nx-sb-off .nx-chrome .nxh-sb{ display:none; }
 #phantomZone .pz-wtag.k-mismatch{background:#0891B2}
 #phantomZone .pz-verd.k-nostock{background:#FEF2F2;color:#991B1B}
 #phantomZone .pz-verd.k-mismatch{background:#ECFEFF;color:#155E75}
+#phantomZone .pz-viewsw{flex:0 0 auto;height:32px;padding:0 11px;border:1px solid var(--nx-line-2);
+  border-radius:7px;background:var(--nx-card);color:var(--nx-ink);font:600 12px var(--nx-sans);cursor:pointer;white-space:nowrap}
+#phantomZone .pz-viewsw:hover{border-color:var(--nx-blue);color:var(--nx-blue)}
+#phantomZone .pz-btot{padding:10px 15px 6px;font:600 12px var(--nx-sans);color:var(--nx-ink)}
+#phantomZone .pz-bkey{display:flex;gap:10px;padding:0 15px 9px;font-size:9.5px;color:var(--nx-muted);flex-wrap:wrap}
+#phantomZone .pz-bkey span{display:inline-flex;align-items:center;gap:4px}
+#phantomZone .pz-bkey span::before{content:"";width:7px;height:7px;border-radius:2px}
+#phantomZone .pz-bkey .k-kill::before{background:var(--nx-bad)}
+#phantomZone .pz-bkey .k-stock::before{background:#7C3AED}
+#phantomZone .pz-bkey .k-list::before{background:var(--nx-ok)}
+#phantomZone .pz-bkey .k-issue::before{background:var(--nx-warn)}
+#phantomZone .pz-brow{padding:10px 15px;border-bottom:1px solid var(--nx-line);cursor:pointer}
+#phantomZone .pz-brow:hover{background:var(--nx-bg)}
+#phantomZone .pz-brow.undated{background:rgba(148,163,184,.07)}
+#phantomZone .pz-bhd{display:flex;align-items:baseline;gap:6px}
+#phantomZone .pz-bhd b{font:700 14px 'IBM Plex Mono',monospace}
+#phantomZone .pz-bhd .n{font-size:12.5px;color:var(--nx-muted)}
+#phantomZone .pz-bhd .val{margin-left:auto;font:600 12px var(--nx-sans);color:var(--nx-muted)}
+#phantomZone .pz-bbar{display:flex;gap:4px;margin-top:6px}
+#phantomZone .pz-bbar span{font:700 10.5px var(--nx-sans);padding:2px 7px;border-radius:5px;color:#fff}
+#phantomZone .pz-bbar .k-kill{background:var(--nx-bad)}
+#phantomZone .pz-bbar .k-stock{background:#7C3AED}
+#phantomZone .pz-bbar .k-list{background:var(--nx-ok)}
+#phantomZone .pz-bbar .k-issue{background:var(--nx-warn)}
+#phantomZone .pz-bnote{font-size:10px;color:var(--nx-muted);margin-top:6px;line-height:1.45}
+#phantomZone .pz-bempty{padding:40px 20px;text-align:center;color:var(--nx-muted)}
+#phantomZone .pz-tabs{gap:2px;padding:9px 8px 0}
+#phantomZone .pz-tab{padding:7px 2px 8px;min-width:0}
+#phantomZone .pz-tab b{font-size:16px}
+#phantomZone .pz-tab span{font-size:9.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+/* The old eight-tab strip wrapped labels onto two lines and clipped them.
+   Five action tabs fit on one line at any sane column width. */
+#phantomZone .pz-tab.k-check.on{border-bottom-color:var(--nx-warn)}
+#phantomZone .pz-tab.k-check.on b,#phantomZone .pz-tab.k-check.on span{color:var(--nx-warn)}
 </style>
 <style id="nx-trace-css">
 #traceZone{position:fixed;top:var(--nx-hd-h);left:var(--nx-sb-w);right:0;bottom:0;display:none;
@@ -4466,6 +4500,77 @@ html[data-rank="10"] .wb-grid::after{ color:rgba(251,191,36,.65); }
 .wb-col.wb-left #lsStats .ls-head b{font-size:11px}
 .wb-col.wb-left #lsStats .ls-scope button{font-size:9px;padding:2px 4px}
 </style>
+<style id="nx-pz-redesign">
+/* ── Phantom Zone, rebuilt ─────────────────────────────────────────────
+   The old layout grew a tab at a time until eight of them wrapped and
+   clipped in a 400px column. This is built around the two questions the
+   tool actually answers, in order: what needs doing, and what is this one.
+   Sources sit on top because their age decides whether anything below is
+   true; the four actions are the navigation; list and detail sit under. */
+
+#phantomZone{display:flex;flex-direction:column;gap:0}
+
+/* — sources — */
+#phantomZone .pz-srcbar{display:flex;align-items:stretch;gap:8px;padding:14px 22px 0;flex-wrap:wrap}
+#phantomZone .pz-scan{display:inline-flex;align-items:center;gap:7px;font:600 13px var(--nx-sans);
+  color:#fff;background:var(--nx-blue);border:0;border-radius:9px;padding:0 17px;cursor:pointer;min-height:46px}
+#phantomZone .pz-scan:hover{background:var(--nx-blue-dk)}
+#phantomZone .pz-scan svg{width:15px;height:15px}
+#phantomZone .pz-src{display:flex;flex-direction:column;justify-content:center;gap:1px;min-height:46px;
+  padding:6px 13px;border-radius:9px;cursor:pointer;min-width:132px;
+  border:1.5px dashed var(--nx-line-2);background:var(--nx-card)}
+#phantomZone .pz-src.loaded{border-style:solid;border-color:var(--nx-ok);background:#F0FDF4}
+#phantomZone .pz-src b{font:600 11.5px var(--nx-sans)}
+#phantomZone .pz-src.loaded b{color:var(--nx-ok)}
+#phantomZone .pz-src small{font-size:10.5px;color:var(--nx-muted)}
+
+/* — the four actions — */
+#phantomZone .pz-acts{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:12px 22px 0}
+#phantomZone .pz-actcard{position:relative;text-align:left;padding:12px 14px 11px;border-radius:11px;cursor:pointer;
+  border:1px solid var(--nx-line);background:var(--nx-card);font-family:var(--nx-sans);
+  transition:border-color .12s,box-shadow .12s,transform .12s}
+#phantomZone .pz-actcard:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(15,23,42,.10)}
+#phantomZone .pz-actcard b{display:block;font:700 26px/1 var(--nx-sans);letter-spacing:-.02em}
+#phantomZone .pz-actcard span{display:block;font-size:11px;color:var(--nx-muted);margin-top:4px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#phantomZone .pz-actcard i{display:block;font-style:normal;font-size:10.5px;font-weight:600;
+  color:var(--nx-faint);margin-top:3px}
+#phantomZone .pz-actcard::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;
+  border-radius:0 0 11px 11px;background:transparent}
+#phantomZone .pz-actcard.on{border-color:var(--nx-ink)}
+#phantomZone .pz-actcard.a-end.on{border-color:var(--nx-bad)}    #phantomZone .pz-actcard.a-end.on b{color:var(--nx-bad)}
+#phantomZone .pz-actcard.a-fix.on{border-color:#7C3AED}          #phantomZone .pz-actcard.a-fix.on b{color:#7C3AED}
+#phantomZone .pz-actcard.a-list.on{border-color:var(--nx-ok)}    #phantomZone .pz-actcard.a-list.on b{color:var(--nx-ok)}
+#phantomZone .pz-actcard.a-look.on{border-color:var(--nx-warn)}  #phantomZone .pz-actcard.a-look.on b{color:var(--nx-warn)}
+#phantomZone .pz-actcard.a-end.on::after{background:var(--nx-bad)}
+#phantomZone .pz-actcard.a-fix.on::after{background:#7C3AED}
+#phantomZone .pz-actcard.a-list.on::after{background:var(--nx-ok)}
+#phantomZone .pz-actcard.a-look.on::after{background:var(--nx-warn)}
+#phantomZone .pz-actcard.on::after{background:var(--nx-ink)}
+/* Zero is not worth a colour — a count of none should recede, not compete. */
+#phantomZone .pz-actcard.empty{opacity:.42}
+
+/* — guide line — */
+#phantomZone .pz-guide{margin:12px 22px 0}
+
+/* — body — */
+#phantomZone .pz-body{display:grid;grid-template-columns:minmax(330px,400px) 1fr;gap:14px;
+  padding:12px 22px 18px;flex:1;min-height:0}
+#phantomZone .pz-col{background:var(--nx-card);border:1px solid var(--nx-line);border-radius:12px;
+  display:flex;flex-direction:column;min-height:0;overflow:hidden}
+#phantomZone .pz-listhd{display:flex;gap:6px;padding:10px 11px;border-bottom:1px solid var(--nx-line)}
+#phantomZone .pz-listhd input{flex:1;min-width:0;height:32px;border:1px solid var(--nx-line-2);border-radius:7px;
+  padding:0 10px;font:400 12.5px var(--nx-sans);color:var(--nx-ink);background:var(--nx-card)}
+#phantomZone .pz-listhd select{flex:0 0 108px;height:32px;border:1px solid var(--nx-line-2);border-radius:7px;
+  padding:0 7px;font:500 12px var(--nx-sans);color:var(--nx-ink);background:var(--nx-card);cursor:pointer}
+#phantomZone .pz-viewsw{flex:0 0 auto;height:32px;padding:0 10px}
+
+@media (max-width:1180px){
+  #phantomZone .pz-acts{grid-template-columns:repeat(3,1fr)}
+  #phantomZone .pz-body{grid-template-columns:1fr}
+  #phantomZone .pz-leftcol{max-height:44vh}
+}
+</style>
 </head><body>
 <div id="nxChrome" class="nx-chrome">
   <header class="nxh-hd">
@@ -4517,43 +4622,48 @@ html[data-rank="10"] .wb-grid::after{ color:rgba(251,191,36,.65); }
 </div>
 
 <div id="phantomZone">
-  <div class="pz-strip">
-    <button class="pz-scan" id="pzScan" data-tip="Re-checks the two reports against the Shopify catalog and rebuilds the list. Press after new sales."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Scan</button>
-    <div class="pz-drops">
-      <label class="pz-drop" id="pzDropList" data-tip="Your eBay Active Listings export — everything currently live on eBay. This is what we scan for ghosts."><b>Active Listings</b><small id="pzListInfo">drop CSV</small><input type="file" accept=".csv" hidden></label>
-      <label class="pz-drop" id="pzDropSold" data-tip="Your eBay Paid &amp; Shipped export. If a live listing shows up in here, it already sold — that's a phantom."><b>Paid &amp; Shipped</b><small id="pzSoldInfo">drop CSV</small><input type="file" accept=".csv" hidden></label>
-    </div>
-    <label class="pz-drop" id="pzCatBadge" data-tip="The Shopify product list this tool checks SKUs against. If it's stale, real products show as GHOST. Click to refresh it." style="cursor:pointer"><b>Shopify catalog</b><small id="pzCatInfo">checking…</small></label>
-    <div class="pz-metrics">
-      <div class="pz-metric bad" data-tip="Confirmed phantoms — sold, gone, still live on eBay. Kill these."><b id="pzMPh">0</b><span>to clear</span></div>
-      <div class="pz-metric warn" data-tip="Probably sold, not certain. Check the shelf first."><b id="pzMCk">0</b><span>to check</span></div>
-      <div class="pz-metric ok" data-tip="Phantom listings you've killed this session."><b id="pzMEnd">0</b><span>killed</span></div>
-      <div class="pz-metric" style="border-left:1px solid var(--nx-line);padding-left:24px" data-tip="Total value of every live phantom — what could turn into cancellations and refunds if left up."><b id="pzMRisk">$0</b><span>at risk</span></div>
-    </div>
+
+  <!-- Sources: the three inputs, always visible so their age is never a mystery -->
+  <div class="pz-srcbar">
+    <button class="pz-scan" id="pzScan" data-tip="Re-checks the reports against the Shopify catalog and rebuilds the list.">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Scan</button>
+    <label class="pz-src" id="pzDropList" data-tip="Your eBay Active Listings export \u2014 everything currently live on eBay.">
+      <b>Active Listings</b><small id="pzListInfo">drop CSV</small><input type="file" accept=".csv" hidden></label>
+    <label class="pz-src" id="pzDropSold" data-tip="Your eBay Paid &amp; Shipped export. If a live listing is in here, it already sold.">
+      <b>Paid &amp; Shipped</b><small id="pzSoldInfo">drop CSV</small><input type="file" accept=".csv" hidden></label>
+    <label class="pz-src" id="pzCatBadge" data-tip="The Shopify product list SKUs are matched against. If it is stale, real products look like ghosts. Click to refresh.">
+      <b>Shopify catalog</b><small id="pzCatInfo">checking\u2026</small></label>
   </div>
+
+  <!-- What to do: four actions, each a target you can click into -->
+  <div class="pz-acts" id="pzTabs">
+    <button class="pz-actcard on" data-f="all">
+      <b id="pzTAll">0</b><span>everything flagged</span></button>
+    <button class="pz-actcard a-end" data-f="act:end"
+      data-tip="Already sold or out of stock, but still buyable on eBay. End these before someone buys what you cannot ship.">
+      <b id="pzTEnd">0</b><span>end the listing</span><i id="pzVEnd"></i></button>
+    <button class="pz-actcard a-fix" data-f="act:fix"
+      data-tip="The listing is fine \u2014 Shopify is wrong. Quantity never came down, or the product is draft while listed.">
+      <b id="pzTFix">0</b><span>fix stock</span><i id="pzVFix"></i></button>
+    <button class="pz-actcard a-list" data-f="act:list"
+      data-tip="In stock and never put on eBay. Money sitting on a shelf.">
+      <b id="pzTList">0</b><span>put on eBay</span><i id="pzVList"></i></button>
+    <button class="pz-actcard a-look" data-f="act:look"
+      data-tip="Not certain either way. Look before acting.">
+      <b id="pzTLook">0</b><span>go look</span><i id="pzVLook"></i></button>
+  </div>
+
   <div class="pz-guide" id="pzGuide"></div>
+
   <div class="pz-body">
-    <div class="pz-col">
-      <div class="pz-tabs" id="pzTabs">
-        <button class="pz-tab on" data-f="all" data-tip="Everything flagged."><b id="pzTAll">0</b><span>all</span></button>
-        <button class="pz-tab k-phantom" data-f="phantom" data-tip="CONFIRMED: sold, gone, still live. Safe to kill."><b id="pzTPh">0</b><span>confirmed</span></button>
-        <button class="pz-tab k-check" data-f="check" data-tip="CHECK: probably sold, confirm on the shelf first."><b id="pzTCk">0</b><span>check</span></button>
-        <button class="pz-tab k-nostock" data-f="nostock" data-tip="SOLD IN STORE: Shopify shows zero stock with no eBay sale \u2014 it most likely sold over the counter and eBay was never told."><b id="pzTNs">0</b><span>in store</span></button>
-        <button class="pz-tab k-mismatch" data-f="mismatch" data-tip="STATUS WRONG: listed on eBay and Shopify still shows stock, but the product is draft or archived. Fix the status rather than ending the listing."><b id="pzTMm">0</b><span>status</span></button>
-        <button class="pz-tab k-ghost" data-f="ghost" data-tip="GHOST: live on eBay, no Shopify match — usually a SKU typo."><b id="pzTGh">0</b><span>ghost</span></button>
-        <button class="pz-tab k-stock" data-f="phantomstock" data-tip="SOLD BUT STOCK NOT UPDATED: Shopify still shows stock, but the shipped report says it already went out. Fix the quantity, don't list it."><b id="pzTSt">0</b><span>stock wrong</span></button>
-        <button class="pz-tab k-unlisted" data-f="unlisted" data-tip="READY TO LIST: prepped in Shopify with stock, added in the last 60 days, but never pushed to eBay."><b id="pzTUn">0</b><span>to list</span></button>
-      </div>
-      <div style="padding:9px 12px;border-bottom:1px solid var(--nx-line);display:flex;gap:6px">
-        <input id="pzSearch" placeholder="Filter by SKU or title…" autocomplete="off"
-          style="flex:1;min-width:0;height:32px;border:1px solid var(--nx-line-2);border-radius:7px;padding:0 10px;font:400 12.5px var(--nx-sans);color:var(--nx-ink);background:var(--nx-card)">
-        <select id="pzType" data-tip="Narrow to one product type. Built from whatever is actually in the list."
-          style="flex:0 0 140px;height:32px;border:1px solid var(--nx-line-2);border-radius:7px;padding:0 8px;font:500 12.5px var(--nx-sans);color:var(--nx-ink);background:var(--nx-card);cursor:pointer">
-          <option value="">All types</option>
-        </select>
+    <div class="pz-col pz-leftcol">
+      <div class="pz-listhd">
+        <input id="pzSearch" placeholder="Filter by SKU or title\u2026" autocomplete="off">
+        <select id="pzType" data-tip="Narrow to one product type."><option value="">All types</option></select>
+        <button type="button" id="pzViewSw" class="pz-viewsw" data-tip="Group by the date on the end of the SKU \u2014 the suffix Bulk activation uses.">Batches</button>
       </div>
       <div class="pz-list" id="pzList"></div>
-      <div class="pz-kb">J / K move &nbsp;·&nbsp; X arm + kill &nbsp;·&nbsp; U undo &nbsp;·&nbsp; 1-4 filter</div>
+      <div class="pz-kb">J / K move &nbsp;\u00b7&nbsp; X confirm + clear &nbsp;\u00b7&nbsp; U undo</div>
     </div>
     <div class="pz-col"><div class="pz-work" id="pzWork"></div></div>
   </div>
@@ -37168,8 +37278,21 @@ document.addEventListener('click',function(e){
           unlisted:{tag:'READY TO SELL',grp:'Sitting here, never put on eBay',verd:'<b>This is sitting here doing nothing.</b> Shopify has it in stock and nothing has sold it, but it was never put on eBay. Put it up and it can start selling.'},
           ghost:{tag:'NOT IN SHOPIFY',grp:'This SKU is not in Shopify',verd:'<b>No Shopify match.</b> This SKU isn\'t in the loaded catalog. If lots of items show this, the catalog is stale — click the Shopify catalog badge up top to refresh it. If the catalog is current, it\'s a real SKU typo or a deleted product.'}};
   var QUERY='', TYPE='';
+  // Tabs group by ACTION, not by diagnosis. Seven verdicts share four actions,
+  // and eight tabs did not fit the column — labels wrapped and clipped. The
+  // precise verdict still appears on the card; the tabs just answer "what am I
+  // doing with this pile".
+  var ACTION_OF={ phantom:'end', nostock:'end',
+                  phantomstock:'fix', mismatch:'fix',
+                  unlisted:'list',
+                  check:'look', ghost:'look' };
+  function inFilter(p){
+    if(FILTER==='all') return true;
+    if(FILTER.indexOf('act:')===0) return ACTION_OF[p.kind]===FILTER.slice(4);
+    return p.kind===FILTER;
+  }
   function filtered(){
-    var base = FILTER==='all'?PZ:PZ.filter(function(p){return p.kind===FILTER;});
+    var base = PZ.filter(inFilter);
     if(TYPE) base=base.filter(function(p){return (p.type||'')===TYPE;});
     if(!QUERY) return base;
     var q=QUERY.toLowerCase();
@@ -37182,7 +37305,7 @@ document.addEventListener('click',function(e){
   // where the pile is (102 of the unlisted ones are Video Game).
   function renderTypes(){
     var sel=$('pzType'); if(!sel) return;
-    var scope = FILTER==='all'?PZ:PZ.filter(function(p){return p.kind===FILTER;});
+    var scope = PZ.filter(inFilter);
     var counts={}; scope.forEach(function(p){ var t=p.type||'(no type)'; counts[t]=(counts[t]||0)+1; });
     var keys=Object.keys(counts).sort(function(a,b){return counts[b]-counts[a];});
     var cur=TYPE;
@@ -37190,23 +37313,98 @@ document.addEventListener('click',function(e){
       keys.map(function(t){ return '<option value="'+esc(t)+'"'+(t===cur?' selected':'')+'>'+esc(t)+' ('+counts[t]+')</option>'; }).join('');
     if(cur && keys.indexOf(cur)<0){ TYPE=''; sel.value=''; }
   }
-  function tabs(){ var c=function(k){return PZ.filter(function(p){return p.kind===k;}).length;};
-    $('pzTAll').textContent=PZ.length; $('pzTPh').textContent=c('phantom'); $('pzTCk').textContent=c('check'); $('pzTGh').textContent=c('ghost'); var ns=$('pzTNs'); if(ns) ns.textContent=c('nostock'); var mm=$('pzTMm'); if(mm) mm.textContent=c('mismatch'); $('pzTUn').textContent=c('unlisted'); var e=$('pzTSt'); if(e) e.textContent=c('phantomstock'); }
-  function metrics(){
-    $('pzMPh').textContent=PZ.filter(function(p){return p.kind==='phantom';}).length;
-    $('pzMCk').textContent=PZ.filter(function(p){return p.kind==='check'||p.kind==='ghost';}).length;
-    $('pzMEnd').textContent=ended;
-    $('pzMRisk').textContent='$'+PZ.filter(function(p){return p.kind!=='unlisted';}).reduce(function(a,p){return a+(p.price||0);},0).toLocaleString();
+  function tabs(){
+    var byAct=function(a){ return PZ.filter(function(p){ return ACTION_OF[p.kind]===a; }); };
+    var money=function(g){ return g.reduce(function(a,p){ return a+(p.price||0); },0); };
+    var set=function(id,v){ var el=$(id); if(el) el.textContent=v; };
+    var acts=[['end','pzTEnd','pzVEnd'],['fix','pzTFix','pzVFix'],
+              ['list','pzTList','pzVList'],['look','pzTLook','pzVLook']];
+    set('pzTAll', PZ.length);
+    acts.forEach(function(a){
+      var g=byAct(a[0]);
+      set(a[1], g.length);
+      var v=$(a[2]);
+      if(v) v.textContent = g.length ? '$'+Math.round(money(g)).toLocaleString() : '';
+      // A count of zero should recede rather than compete for attention.
+      var card=document.querySelector('#pzTabs [data-f="act:'+a[0]+'"]');
+      if(card) card.classList.toggle('empty', g.length===0);
+    });
   }
+  // ── Batch rollup ────────────────────────────────────────────────────
+  // The worklist answers "what do I do next"; this answers "which intake dates
+  // still have problems". Grouped on the 4-digit suffix the SKUs end in, which
+  // is also what Bulk activation keys on — so a date here can be handed
+  // straight to it.
+  //
+  // Only about 43% of SKUs carry that suffix, so everything else lands in an
+  // explicit "no date" row rather than being dropped. Hiding 200+ items behind
+  // a tidy-looking set of batches would be worse than not building this.
+  function batchOf(sku){
+    var m=String(sku||'').match(/-(\d{4})\s*$/);
+    return m ? m[1] : null;
+  }
+  var BATCH_KIND={
+    phantom:      {col:'kill',  label:'take down'},
+    nostock:      {col:'kill',  label:'take down'},
+    check:        {col:'issue', label:'check'},
+    mismatch:     {col:'issue', label:'check'},
+    ghost:        {col:'issue', label:'check'},
+    phantomstock: {col:'stock', label:'wrong qty'},
+    unlisted:     {col:'list',  label:'put on eBay'}
+  };
+  function batchRollup(){
+    var B={};
+    PZ.forEach(function(p){
+      var d=batchOf(p.sku)||'(no date)';
+      var m=BATCH_KIND[p.kind]; if(!m) return;
+      B[d]=B[d]||{kill:0,stock:0,list:0,issue:0,n:0,val:0,date:d};
+      B[d][m.col]++; B[d].n++; B[d].val+=(p.price||0);
+    });
+    return Object.keys(B).map(function(k){ return B[k]; })
+      .sort(function(a,b){
+        if(a.date==='(no date)') return 1;
+        if(b.date==='(no date)') return -1;
+        return b.date.localeCompare(a.date);   // newest intake first
+      });
+  }
+  function renderBatches(){
+    var host=$('pzList'); if(!host) return;
+    var rows=batchRollup();
+    if(!rows.length){ host.innerHTML='<div class="pz-bempty">Nothing flagged \u2014 no batches to show.</div>'; return; }
+    var tot=rows.reduce(function(a,r){ return {kill:a.kill+r.kill,stock:a.stock+r.stock,
+      list:a.list+r.list,issue:a.issue+r.issue,n:a.n+r.n,val:a.val+r.val}; },
+      {kill:0,stock:0,list:0,issue:0,n:0,val:0});
+    host.innerHTML=
+      '<div class="pz-btot">'+tot.n+' flagged across '+rows.length+' batch'+(rows.length===1?'':'es')+
+        ' \u00b7 $'+Math.round(tot.val).toLocaleString()+'</div>'+
+      '<div class="pz-bkey"><span class="k-kill">take down</span><span class="k-stock">wrong qty</span>'+
+        '<span class="k-list">put on eBay</span><span class="k-issue">check</span></div>'+
+      rows.map(function(r){
+        var undated=(r.date==='(no date)');
+        return '<div class="pz-brow'+(undated?' undated':'')+'" data-batch="'+r.date+'">'+
+          '<div class="pz-bhd"><b>'+r.date+'</b> <span class="n">('+r.n+')</span>'+
+            '<span class="val">$'+Math.round(r.val).toLocaleString()+'</span></div>'+
+          '<div class="pz-bbar">'+
+            (r.kill  ? '<span class="k-kill"  title="Already sold or no stock \u2014 take the listing down">'+r.kill+'</span>' : '')+
+            (r.stock ? '<span class="k-stock" title="Quantity is wrong between Shopify and eBay">'+r.stock+'</span>' : '')+
+            (r.list  ? '<span class="k-list"  title="In stock, never put on eBay">'+r.list+'</span>' : '')+
+            (r.issue ? '<span class="k-issue" title="Needs a look before acting">'+r.issue+'</span>' : '')+
+          '</div>'+
+          (undated ? '<div class="pz-bnote">These SKUs have no date on the end, so Bulk activation cannot pick them up by suffix \u2014 work them from the list.</div>' : '')+
+        '</div>';
+      }).join('');
+  }
+
   function renderList(){
     tabs(); metrics(); renderTypes();
     var l=$('pzList'), rows=filtered();
     if(!rows.length){ l.innerHTML='<div style="padding:50px 24px;text-align:center;color:var(--nx-muted)"><div style="font-size:38px;margin-bottom:8px">✓</div>Nothing here.</div>'; return; }
-    var order=['phantom','phantomstock','check','nostock','mismatch','ghost','unlisted'], html='';
+    var order=['phantom','nostock','phantomstock','mismatch','unlisted','check','ghost'], html='';
     order.forEach(function(k){
-      if(FILTER!=='all'&&FILTER!==k) return;
+      if(FILTER!=='all' && FILTER.indexOf('act:')!==0 && FILTER!==k) return;
+      if(FILTER.indexOf('act:')===0 && ACTION_OF[k]!==FILTER.slice(4)) return;
       var grp=rows.filter(function(p){return p.kind===k;}); if(!grp.length) return;
-      if(FILTER==='all') html+='<div class="pz-grph">'+KM[k].grp+' ('+grp.length+')</div>';
+      if(FILTER==='all'||FILTER.indexOf('act:')===0) html+='<div class="pz-grph">'+KM[k].grp+' ('+grp.length+')</div>';
       grp.forEach(function(p){ var gi=PZ.indexOf(p);
         html+='<div class="pz-row '+(gi===idx?'on':'')+'" data-i="'+gi+'"><span class="pz-dot '+p.kind+'"></span>'+
           '<span class="pz-nm"><b>'+esc(p.name)+'</b><small>'+esc((p.type?p.type+' · ':'')+p.shop)+'</small></span>'+
@@ -37362,7 +37560,13 @@ document.addEventListener('click',function(e){
     g.className='pz-guide '+tone;
     g.innerHTML='<b>'+step+'</b><span>'+detail+'</span>';
   }
-  function render(){ renderList(); renderWork(); renderGuide(); }
+  var VIEW='list';
+  function render(){
+    if(VIEW==='batches'){ tabs(); metrics(); renderBatches(); }
+    else renderList();
+    renderWork(); renderGuide();
+    var sw=$('pzViewSw'); if(sw) sw.textContent = VIEW==='batches' ? '\u2190 back to the list' : 'Batches';
+  }
   // One way in to Marketplace Connect, used by every button that needs it.
   function mcOpen(sku, cb){
     if(typeof window.nexusAskExtension==='function'){
@@ -37486,6 +37690,21 @@ document.addEventListener('click',function(e){
         var f=filtered(); if(f.length) idx=PZ.indexOf(f[0]);
         renderList(); renderWork();
       });
+      $('pzViewSw').addEventListener('click',function(){
+        VIEW = (VIEW==='batches') ? 'list' : 'batches';
+        render();
+      });
+      // Clicking a batch drops back into the list filtered to that suffix, so
+      // the rollup is a way in rather than a dead end.
+      $('pzList').addEventListener('click',function(e){
+        var b=e.target.closest('[data-batch]'); if(!b) return;
+        var d=b.getAttribute('data-batch');
+        VIEW='list';
+        QUERY = (d==='(no date)') ? '' : d;
+        var f=$('pzSearch'); if(f) f.value=QUERY;
+        var fl=filtered(); if(fl.length) idx=PZ.indexOf(fl[0]);
+        render();
+      });
       $('pzSearch').addEventListener('input',function(){
         QUERY=this.value.trim();
         var f=filtered(); if(f.length) idx=PZ.indexOf(f[0]);
@@ -37515,9 +37734,9 @@ document.addEventListener('click',function(e){
           if(f){ var fake={files:[f]}; loadFile(fake,pair[1]); }
         });
       });
-      $('pzTabs').addEventListener('click',function(e){ var t=e.target.closest('.pz-tab'); if(!t)return;
+      $('pzTabs').addEventListener('click',function(e){ var t=e.target.closest('.pz-actcard'); if(!t)return;
         FILTER=t.getAttribute('data-f');
-        Array.prototype.forEach.call(document.querySelectorAll('#pzTabs .pz-tab'),function(x){x.classList.toggle('on',x===t);});
+        Array.prototype.forEach.call(document.querySelectorAll('#pzTabs .pz-actcard'),function(x){x.classList.toggle('on',x===t);});
         var f=filtered(); if(f.length) idx=PZ.indexOf(f[0]); render(); });
       $('pzList').addEventListener('click',function(e){ var r=e.target.closest('.pz-row[data-i]'); if(!r)return; idx=+r.getAttribute('data-i'); render(); });
       document.addEventListener('keydown',function(e){
@@ -37538,7 +37757,7 @@ document.addEventListener('click',function(e){
           } else if(PZ.length){ pzClear(); }
         }
         else if(e.key==='u'){undo();}
-        else if('1234'.indexOf(e.key)>-1){var tb=document.querySelectorAll('#pzTabs .pz-tab')[+e.key-1]; if(tb) tb.click();}
+        else if('1234'.indexOf(e.key)>-1){var tb=document.querySelectorAll('#pzTabs .pz-actcard')[+e.key-1]; if(tb) tb.click();}
       });
     }
     render();
