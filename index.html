@@ -4702,6 +4702,23 @@ html.sl-on #wanCanvas{visibility:hidden !important}
 #slToggle{margin-right:6px}
 
 @media (prefers-reduced-motion:reduce){#slRead.pulse{animation:none}}
+
+/* Side tabs: a stack on the panel's right edge, outside the clipped panel. */
+/* The stack takes the panel's own height rather than fixed tab sizes. Three
+   48px tabs came to 174px against a ~143px panel, so C hung off the bottom
+   edge. Pinning top and bottom and letting the tabs share the space keeps
+   them inside the panel at any height — including when the read strip opens
+   and the panel grows. */
+#slPanelWrap .sl-sidebar{position:absolute;right:-38px;top:14px;bottom:14px;display:flex;flex-direction:column;gap:5px;z-index:2}
+#slPanelWrap .sl-sidebar .sl-side{position:static !important;right:auto;width:38px;height:auto;flex:1 1 0;min-height:28px;max-height:56px;display:flex;align-items:center;justify-content:center}
+#slPanelWrap #slK{font-size:10px !important;letter-spacing:.06em}
+#slPanelWrap .sl-side:hover{background:#243330;color:#ffffff}
+/* The SKU modal lives on <body> at z-index 700 — far under this overlay —
+   so without this it opens behind ShovoLegend and looks like nothing happened. */
+html.sl-on #wbDetails{z-index:16100 !important}
+/* Cost is optional: an empty cost is normal, not a gap to fill. */
+#slChips .sl-chip.opt{opacity:.55;border-style:dashed}
+#slChips .sl-chip.sug i::after{content:" \00b7 suggested";font-style:normal;opacity:.7}
 </style>
 
 <style id="nx-sl-tb-css">
@@ -39055,9 +39072,15 @@ function shovoRenderHints(q){
 <div id="slRoot" aria-hidden="true">
   <div id="slStage"><div class="sl-empty" id="slEmpty">Loading the SYG frame…</div></div>
   <div id="slPanelWrap">
+    <!-- Outside #slPanel on purpose: the panel clips its overflow for the
+         rounded corners, and these hang off its right edge — inside it they
+         were rendered but cut away entirely, so they never appeared. -->
+    <div class="sl-sidebar">
+      <button type="button" class="sl-side" id="slK" aria-label="SKU, returns and notes" title="SKU, returns and notes">SKU</button>
+      <button type="button" class="sl-side" id="slS" aria-label="View settings" aria-expanded="false" aria-controls="slPop" title="View settings">S</button>
+      <button type="button" class="sl-side" id="slC" aria-label="Check sold prices on eBay" title="Check sold prices on eBay">C</button>
+    </div>
     <div id="slPanel">
-      <button type="button" class="sl-side" id="slS" aria-label="View settings" aria-expanded="false" aria-controls="slPop">S</button>
-      <button type="button" class="sl-side" id="slC" aria-label="Check sold prices on eBay">C</button>
 
       <div id="slRead" aria-live="polite">
         <div class="sl-cap">What I read</div>
@@ -39236,9 +39259,11 @@ function shovoRenderHints(q){
     if(parsed.bh) c.push('<div class="sl-chip"><i>Battery</i>'+esc(parsed.bh)+'%</div>');
     if(parsed.cycles) c.push('<div class="sl-chip"><i>Cycles</i>'+esc(parsed.cycles)+'</div>');
     c.push(parsed.cost ? '<div class="sl-chip"><i>Cost</i>$'+esc(parsed.cost)+'</div>'
-                       : '<div class="sl-chip miss"><i>Cost</i>not given</div>');
-    c.push(parsed.price ? '<div class="sl-chip"><i>Price</i>$'+esc(parsed.price)+'</div>'
-                        : '<div class="sl-chip miss"><i>Price</i>not given \u2014 Pricing Memory will suggest</div>');
+                       : '<div class="sl-chip opt"><i>Cost</i>optional</div>');
+    c.push(parsed.price
+      ? '<div class="sl-chip'+(parsed.priceSuggested?' sug':'')+'"><i>Price</i>$'+esc(parsed.price)+
+          (parsed.priceSuggested && parsed.priceSuggested!==true ? ' <span style="opacity:.6">('+esc(parsed.priceSuggested)+')</span>' : '')+'</div>'
+      : '<div class="sl-chip miss"><i>Price</i>not given \u2014 no Pricing Memory match</div>');
     chips.innerHTML=c.join('');
     var warn='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 9v4M12 17h.01"></path><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>';
     flags.innerHTML=parsed.flags.map(function(f){ return '<div class="sl-flag">'+warn+'<span>'+esc(f)+'</span></div>'; }).join('');
@@ -39268,8 +39293,27 @@ function shovoRenderHints(q){
     if($('slMode')) $('slMode').textContent=mode||'\u2014';
   }
 
+  // The chip already promised "Pricing Memory will suggest" but nothing here
+  // ever asked it, so the price stayed empty. Ask it whenever the lister has
+  // not stated a price themselves. A stated price always wins; the suggestion
+  // is marked as one so it is never mistaken for something they typed.
+  function suggestInto(p){
+    p.priceSuggested=false;
+    if(p.price || !p.desc) return p;
+    var fn = (typeof window.suggestPriceFor==='function') ? window.suggestPriceFor
+           : (typeof suggestPriceFor==='function') ? suggestPriceFor : null;
+    if(!fn) return p;
+    try{
+      var sg=fn(p.desc, null);
+      if(sg && sg.price){
+        p.price=Number(sg.price).toFixed(2);
+        p.priceSuggested=sg.confidence||true;
+      }
+    }catch(e){}
+    return p;
+  }
   function onType(){
-    parsed=slParse($('slText').value);
+    parsed=suggestInto(slParse($('slText').value));
     confirmFlags=false;
     push(); render();
   }
@@ -39406,6 +39450,12 @@ function shovoRenderHints(q){
     $('slSend').addEventListener('click', send);
     $('slMic').addEventListener('click', function(){ var m=$('nxMicBtn'); if(m) m.click(); setTimeout(micState,120); });
     $('slC').addEventListener('click', soldSearch);
+    $('slK').addEventListener('click', function(){
+      // The Wan Board's own SKU, returns and notes modal — same fields, same
+      // matching; ShovoLegend just gives it a way in.
+      if(typeof window.wanBoardOpenDetails==='function') window.wanBoardOpenDetails();
+      else if(typeof wanBoardOpenDetails==='function') wanBoardOpenDetails();
+    });
     $('slS').addEventListener('click', function(e){
       e.stopPropagation();
       var p=$('slPop'); var open=!p.classList.contains('on');
