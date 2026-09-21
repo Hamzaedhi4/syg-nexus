@@ -4719,6 +4719,23 @@ html.sl-on #wbDetails{z-index:16100 !important}
 /* Cost is optional: an empty cost is normal, not a gap to fill. */
 #slChips .sl-chip.opt{opacity:.55;border-style:dashed}
 #slChips .sl-chip.sug i::after{content:" \00b7 suggested";font-style:normal;opacity:.7}
+
+#slToggles{display:flex;flex-direction:column;gap:2px;margin:2px 0 10px}
+#slToggles .sl-tg{display:flex;align-items:center;gap:10px;padding:6px 4px;border-radius:7px;cursor:pointer;position:relative}
+#slToggles .sl-tg:hover{background:rgba(255,255,255,.04)}
+#slToggles .sl-tg.gap{margin-top:8px}
+#slToggles .sl-tg.off{opacity:.45;cursor:default}
+#slToggles input{position:absolute;opacity:0;width:1px;height:1px}
+#slToggles .sl-tg-sw{flex:none;width:30px;height:17px;border-radius:99px;background:#2d3a36;position:relative;transition:background .15s}
+#slToggles .sl-tg-sw::after{content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;background:#8fa39c;transition:transform .15s,background .15s}
+#slToggles input:checked + .sl-tg-sw{background:#16a34a}
+#slToggles input:checked + .sl-tg-sw::after{transform:translateX(13px);background:#ffffff}
+#slToggles input:focus-visible + .sl-tg-sw{outline:2px solid #35d0c0;outline-offset:2px}
+#slToggles .sl-tg-t{display:flex;flex-direction:column;min-width:0}
+#slToggles .sl-tg-t b{font-size:12.5px;font-weight:600;color:#eef3f1}
+#slToggles .sl-tg-t small{font-size:10.5px;color:#7f968e;line-height:1.35}
+#slToggles .sl-tg.strong .sl-tg-t b{color:#86efac}
+@media (prefers-reduced-motion:reduce){ #slToggles .sl-tg-sw,#slToggles .sl-tg-sw::after{transition:none} }
 </style>
 
 <style id="nx-sl-tb-css">
@@ -39118,6 +39135,8 @@ function shovoRenderHints(q){
       <div class="sl-row"><span>Lister</span><b id="slWho">—</b></div>
       <div class="sl-row"><span>Batch</span><b id="slBatch">—</b></div>
       <div class="sl-row"><span>Send mode</span><b id="slMode">—</b></div>
+      <h4>Sending</h4>
+      <div id="slToggles"></div>
       <button type="button" id="slExit">Exit ShovoLegend</button>
     </div>
   </div>
@@ -39421,6 +39440,44 @@ function shovoRenderHints(q){
     var s=mine.querySelector('span'); if(s) s.textContent= live ? 'Stop' : 'Dictate';
   }
 
+  // ── The Wan Board's switches, mirrored ──────────────────────────────
+  // These are NOT copies. Each row reads the real checkbox when the panel
+  // opens and, when changed, clicks the real one — so its own handlers run.
+  // That matters because they cascade: AUTO turns all five on, and ZhuanMode
+  // cannot run without ShovoMode. A second set of state here would drift
+  // from the board the moment either one was changed.
+  var SL_TOGGLES=[
+    {id:'wbShovoMode',        name:'ShovoMode',              note:'push edits, don\u2019t ask'},
+    {id:'wbZhuanMode',        name:'ZhuanMode',              note:'auto-send via Ask Claude, no review'},
+    {id:'wbThokyMode',        name:'ThokyMode',              note:'attach listing rulebook'},
+    {id:'wbCategoryMode',     name:'Add category',           note:'don\u2019t hold on category'},
+    {id:'wbWearMode',         name:'Standard wear',          note:'add generic used-item wear text'},
+    {id:'wbAutoMode',         name:'AUTO',                   note:'all five on', strong:true},
+    {id:'wbNoChargerDefault', name:'No charger by default',  note:'pre-tick on new entries', gap:true},
+    {id:'wbBarcodePrint',     name:'Barcode label',          note:'print after every push', gap:true},
+    {id:'wbMcMode',           name:'Marketplace activation', note:'publish to eBay after push'}
+  ];
+  function renderToggles(){
+    var box=$('slToggles'); if(!box) return;
+    box.innerHTML=SL_TOGGLES.map(function(t){
+      var real=$(t.id);
+      if(!real) return '';
+      return '<label class="sl-tg'+(t.strong?' strong':'')+(t.gap?' gap':'')+(real.disabled?' off':'')+'">'+
+        '<input type="checkbox" data-real="'+t.id+'"'+(real.checked?' checked':'')+(real.disabled?' disabled':'')+'>'+
+        '<span class="sl-tg-sw" aria-hidden="true"></span>'+
+        '<span class="sl-tg-t"><b>'+esc(t.name)+'</b><small>'+esc(t.note)+'</small></span>'+
+      '</label>';
+    }).join('');
+  }
+  function onToggle(e){
+    var cb=e.target.closest('input[data-real]'); if(!cb) return;
+    var real=$(cb.getAttribute('data-real'));
+    if(!real || real.disabled){ renderToggles(); return; }
+    if(real.checked!==cb.checked) real.click();   // the board's own handlers run
+    // Re-read everything: one switch can move several others.
+    setTimeout(function(){ renderToggles(); meta(); }, 60);
+  }
+
   function soldSearch(){
     var q=parsed.desc.split(/[,.;]/)[0].trim() || parsed.desc;
     if(!q){ return; }
@@ -39460,6 +39517,7 @@ function shovoRenderHints(q){
       e.stopPropagation();
       var p=$('slPop'); var open=!p.classList.contains('on');
       p.classList.toggle('on', open); $('slS').setAttribute('aria-expanded', open?'true':'false'); meta();
+      if(open) renderToggles();
     });
     document.addEventListener('click', function(e){
       var p=$('slPop'); if(!p||!p.classList.contains('on')) return;
@@ -39468,6 +39526,7 @@ function shovoRenderHints(q){
     $('slSize').addEventListener('click', function(e){ var b=e.target.closest('[data-size]'); if(!b) return; prefs.size=b.getAttribute('data-size'); savePrefs(); applyPrefs(); });
     $('slReadPref').addEventListener('click', function(e){ var b=e.target.closest('[data-read]'); if(!b) return; prefs.read=b.getAttribute('data-read'); savePrefs(); applyPrefs(); });
     $('slExit').addEventListener('click', disable);
+    var tg=$('slToggles'); if(tg) tg.addEventListener('change', onToggle);
     var t=$('slToggle'); if(t) t.addEventListener('click', enable);
     // Come back the way the lister left it.
     var was=null; try{ was=localStorage.getItem(KEY); }catch(e){}
