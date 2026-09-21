@@ -3707,7 +3707,7 @@
      charts — the first external script dependency this file has had.
      Needs real internet access at load time; everything else in this
      page has always been fully self-contained. -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style id="nx-home-css">
 /* ── Nexus design tokens ──────────────────────────────────────────────
    The palette the whole app is meant to converge on. The home is the first
@@ -4608,6 +4608,111 @@ html[data-rank="10"] .wb-grid::after{ color:rgba(251,191,36,.65); }
   #phantomZone .pz-body{grid-template-columns:1fr}
   #phantomZone .pz-leftcol{max-height:44vh}
 }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;600&display=swap">
+<style id="nx-shovolegend-css">
+/* ── ShovoLegend ───────────────────────────────────────────────────────
+   A minimal skin over the Wan Board: the SYG frame fills the screen and one
+   panel floats on it. Nothing here re-implements the board — the panel
+   writes into the real composer fields and presses the real buttons, so
+   every rule, flag and push path the board already has still applies. */
+#slRoot{display:none}
+html.sl-on #slRoot{display:block}
+/* Everything else steps back. The board itself stays in the DOM, working,
+   because ShovoLegend drives its inputs and buttons. */
+html.sl-on #nxChrome,
+html.sl-on #wanboardPage,
+html.sl-on #wanToolbar,
+html.sl-on #wanCanvas{visibility:hidden !important}
+
+#slStage{position:fixed;inset:0;z-index:16000;background:#eef0ee}
+#slStage .wb-syg-frame-wrap{position:absolute !important;inset:0 !important;width:100% !important;height:100% !important;margin:0 !important}
+#slStage iframe{width:100% !important;height:100% !important;border:0 !important;display:block}
+#slStage .sl-empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  color:#6b7571;font:500 14px/1.5 system-ui,sans-serif;text-align:center;padding:40px}
+
+#slPanelWrap{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:16010;
+  width:min(1060px,calc(100vw - 120px))}
+#slPanel{position:relative;border-radius:18px;background:#16201d;color:#eef3f1;
+  box-shadow:0 22px 60px rgba(10,20,17,.32);overflow:hidden;
+  font-family:"Instrument Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
+
+/* S over C, hanging off the right edge */
+.sl-side{position:absolute;right:-38px;width:38px;border:0;background:#1b2522;color:#cfd8d4;cursor:pointer;
+  border-radius:0 11px 11px 0;font:700 13px "Instrument Sans",system-ui,sans-serif}
+.sl-side:hover{background:#243330;color:#fff}
+.sl-side:focus-visible{outline:2px solid #35D0C0;outline-offset:2px}
+#slS{top:18px;height:48px}
+#slC{top:72px;height:88px}
+
+/* what it understood */
+#slRead{padding:14px 24px 12px;border-bottom:1px solid #26312d;display:none}
+#slRead.on{display:block}
+.sl-cap{font:600 10.5px "Instrument Sans",system-ui,sans-serif;letter-spacing:.1em;color:#6f8a81;text-transform:uppercase;margin-bottom:9px}
+.sl-chips{display:flex;flex-wrap:wrap;gap:7px}
+.sl-chip{padding:6px 11px;border-radius:8px;background:#1f2b27;border:1px solid #2d3a36;font-size:13px;color:#eef3f1;max-width:100%;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sl-chip i{font-style:normal;color:#7f968e;margin-right:4px}
+.sl-chip.mono b{font:600 12.5px "JetBrains Mono",ui-monospace,monospace}
+.sl-chip.miss{background:transparent;border-style:dashed;color:#7f968e}
+.sl-flag{display:flex;align-items:flex-start;gap:9px;margin-top:9px;padding:8px 12px;border-radius:9px;background:#3a2e14;color:#f7d98a;font-size:13px;line-height:1.45}
+.sl-flag svg{flex:none;margin-top:2px}
+#slRead.pulse{animation:slPulse .5s ease 2}
+@keyframes slPulse{50%{background:#241f12}}
+
+/* input row */
+#slBody{display:flex;gap:16px;padding:16px 18px 18px 24px;min-height:142px}
+#slBody.tall{min-height:260px}
+.sl-textcol{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0}
+.sl-lbl{font-family:"Instrument Serif",Georgia,serif;font-style:italic;font-size:17px;color:#8fa39c}
+#slText{flex:1;resize:none;border:0;outline:none;background:transparent;color:#eef3f1;
+  font:400 16.5px/1.55 "Instrument Sans",system-ui,sans-serif;min-height:78px}
+#slText::placeholder{color:#6f8a81}
+.sl-actcol{display:flex;flex-direction:column;justify-content:space-between;align-items:flex-end;width:190px;flex:none}
+.sl-meta{font:600 10.5px "Instrument Sans",system-ui,sans-serif;letter-spacing:.1em;color:#6f8a81;text-transform:uppercase;text-align:right}
+.sl-meta b{color:#9fb8b0}
+.sl-btns{display:flex;gap:8px;align-items:flex-end}
+#slMic{width:58px;height:96px;border:1px solid #2d3a36;border-radius:13px;background:#1f2b27;color:#cfd8d4;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;font:600 10.5px "Instrument Sans",system-ui,sans-serif;letter-spacing:.04em}
+#slMic:hover{border-color:#35D0C0;color:#fff}
+#slMic.live{border-color:#f87171;color:#fca5a5;background:#2a1b1b}
+#slSend{width:124px;height:96px;border:0;border-radius:13px;background:#16a34a;color:#fff;cursor:pointer;
+  font:700 15px "Instrument Sans",system-ui,sans-serif}
+#slSend:hover{background:#15803d}
+#slSend.warn{background:#b45309}
+#slSend:disabled{opacity:.45;cursor:default}
+#slMic:focus-visible,#slSend:focus-visible{outline:2px solid #35D0C0;outline-offset:2px}
+
+/* settings popover from S */
+#slPop{position:absolute;right:-8px;bottom:calc(100% + 12px);width:260px;padding:14px;border-radius:14px;
+  background:#16201d;border:1px solid #2d3a36;box-shadow:0 18px 40px rgba(0,0,0,.35);color:#eef3f1;display:none;
+  font-family:"Instrument Sans",system-ui,sans-serif}
+#slPop.on{display:block}
+#slPop h4{margin:0 0 10px;font:600 10.5px "Instrument Sans",system-ui,sans-serif;letter-spacing:.1em;color:#6f8a81;text-transform:uppercase}
+.sl-row{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px;padding:6px 0}
+.sl-row span{color:#9fb8b0}
+.sl-seg{display:inline-flex;border:1px solid #2d3a36;border-radius:8px;overflow:hidden}
+.sl-seg button{border:0;background:transparent;color:#9fb8b0;font:600 12px "Instrument Sans",system-ui,sans-serif;padding:6px 10px;cursor:pointer}
+.sl-seg button.on{background:#243330;color:#fff}
+#slExit{margin-top:10px;width:100%;height:40px;border:1px solid #2d3a36;border-radius:10px;background:transparent;color:#eef3f1;
+  font:600 13px "Instrument Sans",system-ui,sans-serif;cursor:pointer}
+#slExit:hover{border-color:#f87171;color:#fca5a5}
+
+/* the toggle that lives in the Wan Board toolbar */
+#slToggle{margin-right:6px}
+
+@media (prefers-reduced-motion:reduce){#slRead.pulse{animation:none}}
+</style>
+
+<style id="nx-sl-tb-css">
+/* The ShovoLegend switch lives in the Wan Board's own toolbar — the bar the
+   lister actually sees. It first went in #listerBar, which the Wan Board
+   hides outright (.wan-panel .lister-bar{display:none}), so it was never
+   visible where it was needed. A little colour so it reads as a mode, not
+   another utility button. */
+#wanToolbar .sl-tb-btn{background:rgba(22,163,74,.16) !important;color:#86efac !important;
+  border-color:rgba(22,163,74,.45) !important;font-weight:600}
+#wanToolbar .sl-tb-btn:hover{background:rgba(22,163,74,.28) !important;color:#bbf7d0 !important}
 </style>
 </head><body>
 <div id="nxChrome" class="nx-chrome">
@@ -21288,7 +21393,7 @@ window.addEventListener('resize', ()=>{ if(gActive) renderStep(); });
   <button class="tb-btn" id="tbHighlightToggle" title="Turn required-field pulsing on or off">Highlight: Off</button>
   <button class="tb-btn" id="tbShortcuts" title="Keyboard shortcuts">⌨️</button>
   <button id="smokeBreakBtn" style="display:none;" title="Only Juan gets this">🚬 Smoke Break</button>
-  <button class="tb-btn" id="tbLockBtn">Lock in</button>
+  <button type="button" class="tb-btn sl-tb-btn" id="slToggle" title="ShovoLegend — a minimal view: the SYG frame full screen with one box to write the whole item in">ShovoLegend</button><button class="tb-btn" id="tbLockBtn">Lock in</button>
   <div class="tb-sep"></div>
 
   <!-- Zoom -->
@@ -26592,8 +26697,8 @@ Sarah Thompson 1443 Roosevelt Ave Carteret NJ 07008"></textarea></div>
   </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <script>
 /* ══════════════════ NEXUS PRICING · SPEC MATCH ENGINE ══════════════════
    Pure, side-effect-free. Detects item category, parses specs from free
@@ -33332,7 +33437,19 @@ if(typeof Chart === 'undefined'){
 
 Chart.defaults.font.family = "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
 
-var nx2RadarChart = new Chart(document.getElementById('radarActivity'), {
+// Build a chart only if its canvas is actually on the page. The radar, gauge
+// and donut belonged to the old dashboard; the new home has no canvases for
+// them, so new Chart(null, …) failed on every load — and because these run at
+// the top of this block, the throw stopped everything after it, including
+// the batch-donut updater and the activity feed setup. Every caller already
+// null-checks the result, so returning null is all that is needed.
+function nxChartOn(id, cfg){
+  var el = document.getElementById(id);
+  if(!el || typeof el.getContext !== 'function') return null;
+  try { return new Chart(el, cfg); } catch (e) { return null; }
+}
+
+var nx2RadarChart = nxChartOn('radarActivity', {
   type: 'radar',
   data: {
     labels: ['Wan','Haz','Pricing','Shipping','Leads'],
@@ -33426,7 +33543,7 @@ function nx2FormatTrendLabel(dateStr){
   try{ localStorage.setItem('abribook:nexusTrendCache', JSON.stringify({labels:labels, data:data})); }catch(e){}
 })();
 
-var nx2GaugeChart = new Chart(document.getElementById('gaugeGoal'), {
+var nx2GaugeChart = nxChartOn('gaugeGoal', {
   type: 'doughnut',
   data: { datasets: [{ data: [0,1], backgroundColor: ['#32e6d4','rgba(var(--overlay-rgb),.08)'], borderWidth: 0 }] },
   options: { maintainAspectRatio:false, rotation: -90, circumference: 180, cutout: '75%',
@@ -33454,7 +33571,7 @@ function nx2UpdateGoalGauge(total, goal){
   }
 }
 
-var nx2DonutChart = new Chart(document.getElementById('donutBatch'), {
+var nx2DonutChart = nxChartOn('donutBatch', {
   type: 'doughnut',
   data: {
     labels: ['Listing ready','Awaiting draft','Pushed live'],
@@ -38933,5 +39050,383 @@ function shovoRenderHints(q){
 })();
 </script>
 
+
+<!-- ── ShovoLegend overlay ─────────────────────────────────────────── -->
+<div id="slRoot" aria-hidden="true">
+  <div id="slStage"><div class="sl-empty" id="slEmpty">Loading the SYG frame…</div></div>
+  <div id="slPanelWrap">
+    <div id="slPanel">
+      <button type="button" class="sl-side" id="slS" aria-label="View settings" aria-expanded="false" aria-controls="slPop">S</button>
+      <button type="button" class="sl-side" id="slC" aria-label="Check sold prices on eBay">C</button>
+
+      <div id="slRead" aria-live="polite">
+        <div class="sl-cap">What I read</div>
+        <div class="sl-chips" id="slChips"></div>
+        <div id="slFlags"></div>
+      </div>
+
+      <div id="slBody">
+        <div class="sl-textcol">
+          <label class="sl-lbl" for="slText">Tell it everything.</label>
+          <textarea id="slText" spellcheck="false"
+            placeholder="What it is, the condition, what comes with it, where it goes on the shelf, what it cost and what to sell it for."></textarea>
+        </div>
+        <div class="sl-actcol">
+          <div class="sl-meta" id="slMeta"></div>
+          <div class="sl-btns">
+            <button type="button" id="slMic" aria-label="Dictate">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v3"></path></svg>
+              <span>Dictate</span>
+            </button>
+            <button type="button" id="slSend">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="slPop" role="dialog" aria-label="ShovoLegend view settings">
+      <h4>View</h4>
+      <div class="sl-row"><span>Panel</span>
+        <div class="sl-seg" id="slSize"><button type="button" data-size="compact" class="on">Compact</button><button type="button" data-size="tall">Tall</button></div>
+      </div>
+      <div class="sl-row"><span>Show what I read</span>
+        <div class="sl-seg" id="slReadPref"><button type="button" data-read="on" class="on">On</button><button type="button" data-read="off">Off</button></div>
+      </div>
+      <div class="sl-row"><span>Lister</span><b id="slWho">—</b></div>
+      <div class="sl-row"><span>Batch</span><b id="slBatch">—</b></div>
+      <div class="sl-row"><span>Send mode</span><b id="slMode">—</b></div>
+      <button type="button" id="slExit">Exit ShovoLegend</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══ ShovoLegend ══════════════════════════════════════════════════════ */
+(function(){
+'use strict';
+  // ── ShovoLegend: freeform → fields ────────────────────────────────────
+  // The lister writes one sentence; the board needs cost, price and bin in
+  // their own fields. Two rules drive everything below:
+  //  1. Pull those numbers OUT of the description. Left in, "cost 60" would be
+  //     sent to Claude as part of the item text and could end up in a public
+  //     listing — the cost of the unit printed on eBay.
+  //  2. Never guess. A number with no label ("60 139") is ambiguous; it is
+  //     reported as unread rather than assigned to cost or price by position.
+  function slParse(text){
+    var t=String(text||'');
+    var out={cost:'',price:'',bin:'',bh:'',cycles:'',grade:'',includes:'',flags:[],desc:''};
+    var cut=[];                                   // spans to remove from the description
+    function take(re, key, fmt){
+      var m=re.exec(t);
+      if(!m) return;
+      out[key]= fmt ? fmt(m) : m[1];
+      cut.push([m.index, m.index+m[0].length]);
+    }
+    var num='\\$?\\s*(\\d{1,5}(?:\\.\\d{1,2})?)';
+    take(new RegExp('\\b(?:cost|paid|bought(?:\\s+(?:it\\s+)?for)?|cogs)\\s*(?:was|is|of|:|=|@)?\\s*'+num,'i'),'cost',function(m){return m[1];});
+    take(new RegExp('\\b(?:sell(?:\\s+(?:it\\s+)?(?:at|for))?|price(?:\\s+(?:it\\s+)?at)?|list(?:\\s+(?:it\\s+)?(?:at|for))?|ask(?:ing)?)\\s*(?:is|:|=|@)?\\s*'+num,'i'),'price',function(m){return m[1];});
+    // Bin: "bin H3/BIN2", "goes in A5 BIN1", or a bare H3/BIN2 anywhere.
+    take(/\b(?:bin|loc(?:ation)?|shelf|goes?\s+(?:in|on|to))\s*[:=-]?\s*([A-Za-z]\d{1,2}(?:\s*\/?\s*bin\s*\d{1,2})?)\b/i,'bin',
+         function(m){ return m[1].toUpperCase().replace(/\s*\/?\s*BIN\s*/,'/BIN'); });
+    if(!out.bin) take(/\b([A-Za-z]\d{1,2}\s*\/?\s*BIN\s*\d{1,2})\b/i,'bin',
+         function(m){ return m[1].toUpperCase().replace(/\s*\/?\s*BIN\s*/,'/BIN'); });
+    take(/\b(?:bh|battery(?:\s+health)?)\s*[:=]?\s*(\d{2,3})\s*%?/i,'bh');
+    // Both orders: people say "412 cycles" and "cycles 412" about equally.
+    take(/\b(\d{1,5})\s*cycles?\b/i,'cycles');
+    if(!out.cycles) take(/\bcycles?\s*(?:count)?\s*[:=]?\s*(\d{1,5})\b/i,'cycles');
+  
+    // Read but kept in the description — these are item facts Claude needs.
+    // Parts always wins: "excellent for parts" is a parts unit, not an
+    // excellent one, and grading it by the first adjective would sell a broken
+    // item as working.
+    if(/\b(for parts|parts only|broken|not working)\b/i.test(t)) out.grade='For Parts';
+    else {
+      var g=/\b(brand new|new in box|like new|excellent|very good|good|fair|poor)\b/i.exec(t);
+      if(g) out.grade = g[1].replace(/\b\w/g,function(c){return c.toUpperCase();});
+    }
+    var inc=/\b(?:with|w\/|comes with|incl(?:udes|uding)?)\s+([^.;\n]{3,60})/i.exec(t);
+    if(inc) out.includes=inc[1].replace(/\$\s?\d{1,5}(?:\.\d{1,2})?/g,'').replace(/\s+/g,' ').trim();
+  
+    // Description = everything minus the pulled fields, tidied.
+    cut.sort(function(a,b){return b[0]-a[0];});
+    var d=t;
+    cut.forEach(function(c){ d=d.slice(0,c[0])+' '+d.slice(c[1]); });
+    out.desc=d.replace(/\s*[,;]\s*(?=[,;]|$)/g,'').replace(/\s{2,}/g,' ').replace(/\s+([,.;])/g,'$1').replace(/^[\s,;.]+|[\s,;]+$/g,'').trim();
+  
+    // Flags: only contradictions a lister can resolve in one glance.
+    var carriers=/\b(verizon|t-?mobile|at&t|att|sprint|cricket|boost|metro|us cellular|xfinity|visible|tracfone|straight talk)\b/i;
+    if(/\bunlocked\b/i.test(t) && carriers.test(t))
+      out.flags.push('Says unlocked and names a carrier \u2014 which is it?');
+    if(/\b(for parts|parts only|broken|not working|doesn.?t (?:turn|power) on)\b/i.test(t) && /\b(excellent|very good|like new)\b/i.test(t))
+      out.flags.push('Graded high but described as parts or broken.');
+    if(out.cost && out.price && Number(out.price) < Number(out.cost))
+      out.flags.push('Price is below cost.');
+    // Numbers with no label are the ones most likely to be misread — surface them.
+    var loose=d.match(/\$\s?\d{1,5}(?:\.\d{1,2})?/g);
+    if(loose){
+      // Cost is optional and only ever set when it is named ("cost 60",
+      // "paid 60"). So a lone unlabelled amount can only be the sell price —
+      // take it as that rather than asking. What still gets flagged is the
+      // genuinely ambiguous: two bare amounts, or a bare one next to a price
+      // that was already labelled.
+      var amt=function(v){ return String(v).replace(/[^\d.]/g,''); };
+      if(loose.length===1 && !out.price){
+        out.price=amt(loose[0]);
+      } else if(out.price){
+        out.flags.push('Extra amount '+loose.join(', ')+' next to the price \u2014 is it the cost? Say \u201ccost\u201d if so.');
+      } else {
+        out.flags.push('Several amounts ('+loose.join(', ')+') \u2014 say \u201csell\u201d before the price so it lands in the right place.');
+      }
+      // Whatever it is, a dollar figure is never item text. If it is the cost,
+      // leaving it here would print what you paid on the public listing.
+      out.desc=out.desc.replace(/\s*\$\s?\d{1,5}(?:\.\d{1,2})?/g,'').replace(/\s{2,}/g,' ').trim();
+    }
+    return out;
+  }
+
+  var KEY='syg:shovoLegend', PREF='syg:shovoLegendPrefs';
+  var $=function(id){ return document.getElementById(id); };
+  var prefs={size:'compact', read:'on'};
+  try{ prefs=Object.assign(prefs, JSON.parse(localStorage.getItem(PREF)||'{}')); }catch(e){}
+  function savePrefs(){ try{ localStorage.setItem(PREF, JSON.stringify(prefs)); }catch(e){} }
+
+  var on=false, pollT=null, lastDesc=null, parsed=slParse(''), confirmFlags=false;
+  var frameHome=null;                 // where the SYG frame lives when ShovoLegend is off
+  var SL_SET={};                      // fields ShovoLegend has written, so it can clear them again
+
+  function esc(v){ var d=document.createElement('div'); d.textContent=v==null?'':String(v); return d.innerHTML; }
+
+  // ── the real board fields ──
+  function setField(id, val){
+    var el=$(id); if(!el) return;
+    if(el.value===val) return;
+    el.value=val;
+    el.dispatchEvent(new Event('input',{bubbles:true}));
+    el.dispatchEvent(new Event('change',{bubbles:true}));
+  }
+  var MAP=[['cost','bhaiCost'],['price','bhaiPrice'],['bin','bhaiInvLocation'],['bh','bhaiBh'],['cycles','bhaiCycles']];
+
+  function push(){
+    // The description goes to the composer WITHOUT the numbers pulled out of
+    // it — otherwise what the unit cost could end up in the public listing.
+    lastDesc=parsed.desc;
+    setField('bhaiDesc', parsed.desc);
+    MAP.forEach(function(p){
+      var v=parsed[p[0]]||'';
+      if(v){ setField(p[1], v); SL_SET[p[1]]=true; }
+      else if(SL_SET[p[1]]){ setField(p[1], ''); delete SL_SET[p[1]]; }
+    });
+  }
+
+  // ── what it understood ──
+  function render(){
+    var box=$('slRead'), chips=$('slChips'), flags=$('slFlags');
+    if(!box) return;
+    var text=($('slText')||{}).value||'';
+    var show = prefs.read==='on' && text.trim().length>0;
+    box.classList.toggle('on', show);
+    if(!show){ updateSend(); return; }
+    var c=[];
+    var name=parsed.desc.split(/[,.;]/)[0].trim();
+    if(name) c.push('<div class="sl-chip"><i>Item</i>'+esc(name.slice(0,64))+'</div>');
+    if(parsed.grade) c.push('<div class="sl-chip"><i>Grade</i>'+esc(parsed.grade)+'</div>');
+    if(parsed.includes) c.push('<div class="sl-chip"><i>With</i>'+esc(parsed.includes)+'</div>');
+    c.push(parsed.bin ? '<div class="sl-chip mono"><i>Bin</i><b>'+esc(parsed.bin)+'</b></div>'
+                      : '<div class="sl-chip miss"><i>Bin</i>not given</div>');
+    if(parsed.bh) c.push('<div class="sl-chip"><i>Battery</i>'+esc(parsed.bh)+'%</div>');
+    if(parsed.cycles) c.push('<div class="sl-chip"><i>Cycles</i>'+esc(parsed.cycles)+'</div>');
+    c.push(parsed.cost ? '<div class="sl-chip"><i>Cost</i>$'+esc(parsed.cost)+'</div>'
+                       : '<div class="sl-chip miss"><i>Cost</i>not given</div>');
+    c.push(parsed.price ? '<div class="sl-chip"><i>Price</i>$'+esc(parsed.price)+'</div>'
+                        : '<div class="sl-chip miss"><i>Price</i>not given \u2014 Pricing Memory will suggest</div>');
+    chips.innerHTML=c.join('');
+    var warn='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 9v4M12 17h.01"></path><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>';
+    flags.innerHTML=parsed.flags.map(function(f){ return '<div class="sl-flag">'+warn+'<span>'+esc(f)+'</span></div>'; }).join('');
+    updateSend();
+  }
+
+  function updateSend(){
+    var b=$('slSend'); if(!b) return;
+    var empty=!parsed.desc;
+    b.disabled=empty;
+    // A flag is a question, not a block — but it must be seen. The first
+    // press with flags showing turns the button into "Send anyway".
+    b.classList.toggle('warn', confirmFlags && parsed.flags.length>0);
+    b.textContent = (confirmFlags && parsed.flags.length) ? 'Send anyway' : 'Send';
+  }
+
+  function meta(){
+    var who='', batch='', mode='';
+    try{ who=(typeof LISTER_INITIAL!=='undefined'&&LISTER_INITIAL)||''; }catch(e){}
+    try{ batch=(typeof LISTER_BATCH!=='undefined'&&LISTER_BATCH)||''; }catch(e){}
+    var auto=$('wbAutoMode');
+    mode = auto ? (auto.checked ? 'Auto' : 'Review') : '';
+    var m=$('slMeta');
+    if(m) m.innerHTML=(who? '<b>'+esc(who)+'</b> \u00b7 ':'')+(batch? esc(batch)+' \u00b7 ':'')+(mode? esc(mode)+' \u00b7 on':'');
+    if($('slWho')) $('slWho').textContent=who||'not locked in';
+    if($('slBatch')) $('slBatch').textContent=batch||'\u2014';
+    if($('slMode')) $('slMode').textContent=mode||'\u2014';
+  }
+
+  function onType(){
+    parsed=slParse($('slText').value);
+    confirmFlags=false;
+    push(); render();
+  }
+
+  // ── keep dictation and board resets flowing back in ──
+  // The mic writes straight into #bhaiDesc, and the board may clear it after
+  // a push. Watch that field: anything that changed it that was not us is
+  // mirrored back into the ShovoLegend box.
+  function poll(){
+    var ta=$('bhaiDesc'), box=$('slText');
+    if(!ta || !box) return;
+    var cur=ta.value;
+    if(lastDesc===null){ lastDesc=cur; return; }
+    if(cur===lastDesc) return;
+    if(!cur && lastDesc){               // the board cleared it: a push went through
+      box.value=''; lastDesc='';
+      parsed=slParse(''); confirmFlags=false;
+      MAP.forEach(function(p){ if(SL_SET[p[1]]){ setField(p[1],''); delete SL_SET[p[1]]; } });
+      render(); return;
+    }
+    var tail='';
+    if(lastDesc && cur.indexOf(lastDesc)===0){
+      tail=cur.slice(lastDesc.length);                  // dictation appended
+      box.value=(box.value.replace(/\s+$/,'')+' '+tail.replace(/^\s+/,'')).trim();
+    } else {
+      // Replaced outright. Keep the numbers the lister already gave, since
+      // those live in their own fields and are not in the composer text.
+      var keep=[];
+      if(parsed.bin) keep.push('bin '+parsed.bin);
+      if(parsed.cost) keep.push('cost '+parsed.cost);
+      if(parsed.price) keep.push('sell '+parsed.price);
+      box.value=(cur+(keep.length? ' \u2014 '+keep.join(', ') : '')).trim();
+    }
+    parsed=slParse(box.value);
+    lastDesc=parsed.desc;
+    push(); render();
+  }
+
+  // ── the SYG frame as the backdrop ──
+  // Moving an <iframe> with appendChild/insertBefore RELOADS it in every
+  // browser, so each toggle threw away whatever the lister had open in the
+  // SYG frame. moveBefore() is the API built for this: it relocates the node
+  // and keeps the frame's live state. Falls back to a plain move only where
+  // the browser does not have it.
+  function place(parent, node, before){
+    if(typeof parent.moveBefore==='function'){
+      try{ parent.moveBefore(node, before||null); return; }catch(e){}
+    }
+    parent.insertBefore(node, before||null);
+  }
+  function mountFrame(){
+    var f=$('wbSygFrame'), stage=$('slStage'); if(!f||!stage) return;
+    var wrap=f.closest('.wb-syg-frame-wrap')||f;
+    if(!frameHome) frameHome={parent:wrap.parentNode, next:wrap.nextSibling};
+    if(wrap.parentNode!==stage) place(stage, wrap, null);
+    if(!f.src){
+      if(typeof wbSygLoad==='function'){ try{ wbSygLoad(); }catch(e){} }
+      else if(f.dataset && f.dataset.src){ f.src=f.dataset.src; }
+    }
+    var empty=$('slEmpty'); if(empty) empty.style.display='none';
+  }
+  function unmountFrame(){
+    var f=$('wbSygFrame'); if(!f||!frameHome) return;
+    var wrap=f.closest('.wb-syg-frame-wrap')||f;
+    var next = (frameHome.next && frameHome.next.parentNode===frameHome.parent) ? frameHome.next : null;
+    try{ place(frameHome.parent, wrap, next); }catch(e){ frameHome.parent.appendChild(wrap); }
+  }
+
+  function applyPrefs(){
+    var body=$('slBody'); if(body) body.classList.toggle('tall', prefs.size==='tall');
+    Array.prototype.forEach.call(document.querySelectorAll('#slSize button'),function(b){ b.classList.toggle('on', b.getAttribute('data-size')===prefs.size); });
+    Array.prototype.forEach.call(document.querySelectorAll('#slReadPref button'),function(b){ b.classList.toggle('on', b.getAttribute('data-read')===prefs.read); });
+    render();
+  }
+
+  function enable(){
+    if(on) return; on=true;
+    document.documentElement.classList.add('sl-on');
+    $('slRoot').setAttribute('aria-hidden','false');
+    try{ localStorage.setItem(KEY,'1'); }catch(e){}
+    mountFrame();
+    // Start from whatever is already in the composer, so switching views
+    // mid-item loses nothing.
+    var ta=$('bhaiDesc'), box=$('slText');
+    if(ta && box && !box.value) box.value=ta.value||'';
+    parsed=slParse(box? box.value : ''); lastDesc=ta? ta.value : '';
+    applyPrefs(); meta();
+    clearInterval(pollT); pollT=setInterval(function(){ poll(); meta(); micState(); }, 350);
+    setTimeout(function(){ if(box) box.focus(); }, 60);
+  }
+  function disable(){
+    if(!on) return; on=false;
+    clearInterval(pollT); pollT=null;
+    document.documentElement.classList.remove('sl-on');
+    $('slRoot').setAttribute('aria-hidden','true');
+    $('slPop').classList.remove('on');
+    try{ localStorage.setItem(KEY,'0'); }catch(e){}
+    unmountFrame();
+  }
+
+  function micState(){
+    var real=$('nxMicBtn'), mine=$('slMic'); if(!real||!mine) return;
+    var live=/stop|listening|live/i.test(real.textContent||'') || real.classList.contains('live') || real.getAttribute('aria-pressed')==='true';
+    mine.classList.toggle('live', live);
+    var s=mine.querySelector('span'); if(s) s.textContent= live ? 'Stop' : 'Dictate';
+  }
+
+  function soldSearch(){
+    var q=parsed.desc.split(/[,.;]/)[0].trim() || parsed.desc;
+    if(!q){ return; }
+    if(typeof openEbaySoldSearch==='function'){ openEbaySoldSearch(q); return; }
+    window.open('https://www.ebay.com/sch/i.html?_nkw='+encodeURIComponent(q.slice(0,80))+'&LH_Sold=1&LH_Complete=1','_blank','noopener');
+  }
+
+  function send(){
+    if(!parsed.desc) return;
+    if(parsed.flags.length && !confirmFlags){
+      confirmFlags=true; updateSend();
+      var r=$('slRead'); if(r){ r.classList.remove('pulse'); void r.offsetWidth; r.classList.add('pulse'); }
+      return;
+    }
+    push();
+    var go=$('bhaiAddEntry');
+    if(go) go.click();
+    confirmFlags=false; updateSend();
+  }
+
+  function wire(){
+    if(!$('slRoot')) return;
+    $('slText').addEventListener('input', onType);
+    $('slText').addEventListener('keydown', function(e){
+      if(e.key==='Enter' && (e.metaKey||e.ctrlKey)){ e.preventDefault(); send(); }
+    });
+    $('slSend').addEventListener('click', send);
+    $('slMic').addEventListener('click', function(){ var m=$('nxMicBtn'); if(m) m.click(); setTimeout(micState,120); });
+    $('slC').addEventListener('click', soldSearch);
+    $('slS').addEventListener('click', function(e){
+      e.stopPropagation();
+      var p=$('slPop'); var open=!p.classList.contains('on');
+      p.classList.toggle('on', open); $('slS').setAttribute('aria-expanded', open?'true':'false'); meta();
+    });
+    document.addEventListener('click', function(e){
+      var p=$('slPop'); if(!p||!p.classList.contains('on')) return;
+      if(!p.contains(e.target) && e.target!==$('slS')){ p.classList.remove('on'); $('slS').setAttribute('aria-expanded','false'); }
+    });
+    $('slSize').addEventListener('click', function(e){ var b=e.target.closest('[data-size]'); if(!b) return; prefs.size=b.getAttribute('data-size'); savePrefs(); applyPrefs(); });
+    $('slReadPref').addEventListener('click', function(e){ var b=e.target.closest('[data-read]'); if(!b) return; prefs.read=b.getAttribute('data-read'); savePrefs(); applyPrefs(); });
+    $('slExit').addEventListener('click', disable);
+    var t=$('slToggle'); if(t) t.addEventListener('click', enable);
+    // Come back the way the lister left it.
+    var was=null; try{ was=localStorage.getItem(KEY); }catch(e){}
+    if(was==='1') setTimeout(enable, 400);
+  }
+
+  window.shovoLegend={ enable:enable, disable:disable, parse:slParse };
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', wire); else wire();
+})();
+</script>
 
 </body></html>
