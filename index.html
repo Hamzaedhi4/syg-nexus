@@ -35605,12 +35605,21 @@ function r_ordNorm(v){ return String(v||'').replace(/[^0-9]/g,''); }
     return h+' hr'+(h===1?'':'s')+' old';
   }
   function pullIsStale(){ return AWAIT_PULLED_AT && (Date.now()-AWAIT_PULLED_AT)>20*60000; }
+  // "21 line items" beside "17 orders" read as the tool miscounting. Say what
+  // the gap is: some orders carry more than one item, and that is how many.
   function ordersLabel(rows){
-    var o=countOrders(rows), l=(rows||[]).length;
-    var blank=(rows||[]).filter(function(x){return !r_ordNorm(x.order||x.ord)}).length;
-    return o+' order'+(o===1?'':'s')+' awaiting shipment'+
-           (l!==o ? ' \u00b7 '+l+' line items' : '')+
-           (blank ? ' \u00b7 '+blank+' with no order number' : '');
+    rows=rows||[];
+    var o=countOrders(rows), l=rows.length;
+    var blank=rows.filter(function(x){return !r_ordNorm(x.order||x.ord)}).length;
+    var per={}; rows.forEach(function(x){ var k=r_ordNorm(x.order||x.ord); if(k) per[k]=(per[k]||0)+1; });
+    var multi=Object.keys(per).filter(function(k){ return per[k]>1; }).length;
+    var out=o+' order'+(o===1?'':'s')+' awaiting shipment';
+    if(l!==o){
+      out+=' \u00b7 '+l+' item'+(l===1?'':'s')+' to pack';
+      if(multi) out+=' ('+multi+' order'+(multi===1?' has':'s have')+' more than one item)';
+    }
+    if(blank) out+=' \u00b7 '+blank+' with no order number';
+    return out;
   }
 
 
