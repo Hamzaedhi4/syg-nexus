@@ -4748,6 +4748,19 @@ html.sl-on #wbDetails{z-index:16100 !important}
   border-color:rgba(22,163,74,.45) !important;font-weight:600}
 #wanToolbar .sl-tb-btn:hover{background:rgba(22,163,74,.28) !important;color:#bbf7d0 !important}
 </style>
+<style id="nx-oc-stockhist-css">
+.oc-issue.ok{border-left-color:#16a34a}
+.oc-sh{margin-top:9px;padding:9px 11px;border-radius:8px;background:rgba(15,23,42,.035);border:1px solid rgba(15,23,42,.08)}
+.oc-sh-t{font:700 10px/1 var(--nx-sans,system-ui);letter-spacing:.09em;text-transform:uppercase;color:#16a34a;margin-bottom:6px}
+.oc-sh-h{font-size:12.5px;font-weight:600;margin-bottom:4px}
+.oc-sh-have{color:#16a34a;font-weight:700}
+.oc-sh ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:3px}
+.oc-sh li{font-size:12px;line-height:1.45}
+.oc-sh-arrow{color:#94a3b8}
+.oc-sh-nt{font-size:10.5px;color:#d97706;font-weight:600}
+.oc-sh-now{margin-top:3px;padding-top:4px;border-top:1px dashed rgba(15,23,42,.12);color:#2563eb}
+.oc-sh-more{color:#94a3b8;font-size:11px}
+</style>
 </head><body>
 <div id="nxChrome" class="nx-chrome">
   <header class="nxh-hd">
@@ -35784,9 +35797,32 @@ var FLAG={
   SKUREUSE:{l:'SKU reused, different item',c:'warn'},
   NOSTOCK:{l:'No stock left',c:'warn'},
   NOSKU:{l:'No SKU on order',c:'ghost'},
+  LOT:{l:'+Stock Item \u2014 stock covers it',c:'ok'},
+  LOTCHECK:{l:'+Stock Item \u2014 count the shelf',c:'warn'},
   OK:{l:'Good to ship',c:'ok'}
 };
-var ORDER=['CANCELLED','SELFSHIP','NOTRACK','SHIPPED','TITLEDUP','DUPE','SKUREUSE','NOSTOCK','NOSKU','OK'];
+/* +Stock History — every earlier sale of a +Stock Item, under its finding.
+   A verdict of "this is fine" is only worth trusting if you can see why, so
+   the sales that make it a lot are listed rather than summarised. */
+function ocStockHist(h){
+  if(!h) return '';
+  var head = esc(h.title||'') +
+    (h.onHand!==null && h.onHand!==undefined
+      ? ' <b class="oc-sh-have">(x'+h.onHand+' '+esc(h.onHandSrc||'on hand')+')</b>' : '');
+  var rows = (h.sales||[]).slice(0,8).map(function(x){
+    return '<li><span class="oc-sh-arrow">\u2192</span> <b>x'+x.qty+'</b> sold'+
+      (x.when? ' on '+esc(x.when) : '')+
+      (x.ord ? ' \u00b7 order '+esc(x.ord) : '')+
+      (x.tracked? '' : ' <span class="oc-sh-nt">no tracking</span>')+'</li>';
+  }).join('');
+  var more = (h.sales||[]).length>8 ? '<li class="oc-sh-more">+ '+((h.sales||[]).length-8)+' more</li>' : '';
+  return '<div class="oc-sh"><div class="oc-sh-t">+Stock History</div>'+
+    '<div class="oc-sh-h">'+head+'</div>'+
+    '<ul>'+rows+more+
+      '<li class="oc-sh-now"><span class="oc-sh-arrow">\u2192</span> <b>x'+(h.wanted||1)+'</b> wanted now, on this order</li>'+
+    '</ul></div>';
+}
+var ORDER=['CANCELLED','SELFSHIP','NOTRACK','SHIPPED','TITLEDUP','DUPE','SKUREUSE','LOTCHECK','NOSTOCK','NOSKU','LOT','OK'];
 
 /* Titles are compared as well as SKUs. A mis-keyed custom label would
    slip past a SKU-only match, and on single-quantity stock the same item
@@ -35805,7 +35841,7 @@ function run(){
   // different items, so a SKU-only hit was condemning orders that were fine.
   // The pair index is the one that decides; the two single-key indexes stay
   // so the softer signals can still be reported instead of thrown away.
-  var shippedPair={}, shippedSku={}, shippedTitle={};
+  var shippedPair={}, shippedSku={}, shippedTitle={}, shippedUnits={}, shippedMaxRow={}, shippedRows={};
   // One tracking number against several shipped rows means the label was
   // copied, not that several parcels moved.
   var trackCount={};
@@ -35823,6 +35859,7 @@ function run(){
     // twice went to two different people. Same buyer means it is far more
     // likely to be the same sale.
     var cBuyer=pick(eh,['buyer username','buyer user id','buyer id','buyer name','buyer']);
+    var cQty=pick(eh,['quantity','qty']);
     EBAY.rows.forEach(function(r){
       var trk=cTrack?String(r[cTrack]||'').trim():'';
       // A literal dash is how the export writes "no tracking here" — treat it
@@ -35838,6 +35875,18 @@ function run(){
       var tk=titleKey(cTitle?r[cTitle]:'');
       if(tk && !shippedTitle[tk]) shippedTitle[tk]=rec;
       if(k && tk && !shippedPair[k+PAIRSEP+tk]) shippedPair[k+PAIRSEP+tk]=rec;
+      // Units, not rows: a lot that has shipped 27 times is not the same story
+      // as a one-off phone that shipped once.
+      if(k && tk){
+        var uq=parseInt(cQty?String(r[cQty]||'').replace(/[^0-9]/g,''):'',10);
+        shippedUnits[k+PAIRSEP+tk]=(shippedUnits[k+PAIRSEP+tk]||0)+(uq>0?uq:1);
+        // The biggest single order, not the sum. Three one-unit rows can be a
+        // reused label on three different one-offs; one order of 42 can only
+        // have come from a multi-quantity listing.
+        if(uq>(shippedMaxRow[k+PAIRSEP+tk]||0)) shippedMaxRow[k+PAIRSEP+tk]=uq;
+        (shippedRows[k+PAIRSEP+tk]=shippedRows[k+PAIRSEP+tk]||[]).push(
+          {qty:(uq>0?uq:1), when:rec.when, ord:rec.ord, track:rec.track});
+      }
     });
   }
   var cat={};
@@ -35848,11 +35897,12 @@ function run(){
   // Same reasoning for "twice in this queue": two orders sharing a SKU are
   // only a real duplicate if they are the same item. seenSku is kept so the
   // reuse itself can still be mentioned without raising a blocker.
-  var seen={}, seenSku={};
+  var seen={}, seenSku={}, queuedUnits={};
   AWAIT.forEach(function(o){
     var k=norm(o.sku), tk=titleKey(o.title);
     if(k) seenSku[k]=(seenSku[k]||0)+1;
     if(k && tk) seen[k+PAIRSEP+tk]=(seen[k+PAIRSEP+tk]||0)+1;
+    if(k && tk) queuedUnits[k+PAIRSEP+tk]=(queuedUnits[k+PAIRSEP+tk]||0)+(o.qty>0?o.qty:1);
   });
 
   var out=[];
@@ -35867,6 +35917,56 @@ function run(){
     var hitPair =(k&&tk)?shippedPair[k+PAIRSEP+tk]:null;
     var hitSku  =(!hitPair && k)?shippedSku[k]:null;
     var hitTitle=(!hitPair && !hitSku && tk)?shippedTitle[tk]:null;
+    // ── Is there stock to fill this from? ─────────────────────────────
+    // A matching SKU on the shipped report only means THIS unit is gone when
+    // it is a one-off. For a lot, earlier shipments were other units, and a
+    // second order is just business. The strongest evidence is eBay's own
+    // live count on this listing, read from the orders page; the Shopify
+    // snapshot is the fallback, and is labelled as such because it can be
+    // stale. Stock is compared against every unit queued for this SKU, not
+    // just this order, so three orders against two units still gets caught.
+    var pairKey = (k&&tk) ? k+PAIRSEP+tk : '';
+    var need = pairKey ? (queuedUnits[pairKey] || (o.qty>0?o.qty:1)) : (o.qty>0?o.qty:1);
+    var liveAvail = (typeof o.avail==='number') ? o.avail : null;
+    var snapQty = c ? Number(c.qty) : NaN;
+    // Neither source is trusted alone, because each fails in a known way:
+    //  · a stale snapshot says "1 in stock" for a one-off that already shipped
+    //  · eBay's available count is overstated on a one-off — that IS the
+    //    phantom problem
+    // So eBay counts only if Shopify does not contradict it, and Shopify
+    // counts only when it shows a real lot (2+). A one-off at 0 or 1 can
+    // never be cleared by the snapshot alone.
+    var evLot     = liveAvail!==null && liveAvail>0;
+    var snapKnown = !isNaN(snapQty);
+    var snapCovers= snapKnown && snapQty>=need;
+    var snapLot   = snapKnown && snapQty>=2;
+    var plenty = (evLot && (!snapKnown || snapCovers)) || (snapLot && snapCovers);
+    var plentyWhy = evLot
+        ? 'eBay shows '+liveAvail+' still available on this listing'+(snapCovers?' and the '+snapLabel()+' has '+snapQty:'')
+        : (snapLot && snapCovers ? 'the '+snapLabel()+' has '+snapQty+' in stock' : '');
+    var priorUnits = pairKey ? (shippedUnits[pairKey]||0) : 0;
+    // "Already shipped" is reasoning about a ONE-OFF: a unit that exists once,
+    // so an earlier shipment means it is gone. For a lot that does not hold —
+    // an earlier order of 42 says nothing about whether the 2 in this order
+    // are on the shelf. A partial refund sends units back and eBay relists
+    // them, and the shipped report has no refund column to show it. So a lot
+    // is judged on stock, never on "a matching SKU shipped before".
+    var biggestPrior = pairKey ? (shippedMaxRow[pairKey]||0) : 0;
+    var isLot = biggestPrior>1 || (o.qty>1);
+    // Every earlier sale of this SKU, newest first — the evidence behind a
+    // +Stock verdict, shown rather than just asserted.
+    function stockHistory(){
+      var rows=(pairKey && shippedRows[pairKey]) ? shippedRows[pairKey].slice() : [];
+      rows.sort(function(a,b){ return (Date.parse(b.when)||0)-(Date.parse(a.when)||0); });
+      var onHand = liveAvail!==null ? liveAvail : (snapKnown ? snapQty : null);
+      return {
+        title: o.title||o.sku||'',
+        onHand: onHand,
+        onHandSrc: liveAvail!==null ? 'available on eBay' : (snapKnown ? 'in the '+snapLabel() : ''),
+        wanted: need,
+        sales: rows.map(function(x){ return {qty:x.qty, when:x.when, ord:x.ord, tracked:!!x.track}; })
+      };
+    }
     // ── Cancelled, refunded or unpaid ─────────────────────────────
     // eBay leaves these on the awaiting-shipment page, so they arrive looking
     // like ordinary work. Nothing downstream is worth computing for an order
@@ -35903,12 +36003,32 @@ function run(){
         '. It has already shipped \u2014 there is nothing to fill and nothing to '+
         'cancel. The awaiting-shipment pull is just older than the shipped report.'});
     } else if(hitPair){
-      if(hitPair.track){
+      if(hitPair.track && plenty){
+        flag='LOT';
+        issues.push({c:'ok',t:'+Stock Item \u2014 this SKU has shipped '+priorUnits+' unit'+(priorUnits===1?'':'s')+
+          ' before, and '+plentyWhy+'. Those were other units, so this order is fine to fill.',
+          hist:stockHistory()});
+      } else if(hitPair.track && isLot){
+        flag='LOTCHECK';
+        issues.push({c:'warn', hist:stockHistory(), t:'+Stock Item \u2014 an earlier order of this SKU shipped '+
+          (biggestPrior>1?biggestPrior+' units at once':priorUnits+' unit'+(priorUnits===1?'':'s'))+
+          (hitPair.ord?' (order '+hitPair.ord+')':'')+
+          ', so this is a multi-quantity lot, not a one-off \u2014 that shipment does not mean these units are gone. '+
+          'Confirm you have '+need+' on the shelf; returned or partially refunded units are the usual source.'});
+      } else if(hitPair.track){
         flag='SHIPPED';
         issues.push({c:'bad',t:'This SKU and item title both appear on the Paid & Shipped report'+
           (hitPair.ord?' as order '+hitPair.ord:'')+(hitPair.when?', shipped '+hitPair.when:'')+
           ', with tracking '+hitPair.track+
           '. The unit is gone \u2014 this order cannot be filled from it.'});
+      } else if(isLot){
+        flag='LOTCHECK';
+        issues.push({c:'warn', hist:stockHistory(), t:'+Stock Item \u2014 an earlier order of this SKU is on the shipped report without tracking, and it is a '+
+          'multi-quantity lot. Confirm you have '+need+' on the shelf before packing.'});
+      } else if(plenty){
+        flag='LOT';
+        issues.push({c:'ghost',t:'An earlier sale of this SKU is on the shipped report without tracking, '+
+          'but it is a multi-quantity item \u2014 '+plentyWhy+'. This order can be filled.'});
       } else {
         // Marked shipped but nothing was ever handed to a carrier. In practice
         // that usually means the unit is still on the shelf and the report is
@@ -35936,10 +36056,16 @@ function run(){
         (hitTitle.ord?' as order '+hitTitle.ord:'')+
         '. Either the label was mis-keyed or you had two \u2014 verify before packing.'});
     }
-    if(k && tk && seen[k+PAIRSEP+tk]>1){
+    if(k && tk && seen[k+PAIRSEP+tk]>1 && plenty){
+      // Several orders for a lot you stock deeply is ordinary. Only a queue that
+      // wants more units than exist is a problem.
+      issues.push({c:'ghost',t:seen[k+PAIRSEP+tk]+' orders for this SKU in the queue ('+need+
+        ' unit'+(need===1?'':'s')+' wanted) \u2014 '+plentyWhy+', which covers them.'});
+    } else if(k && tk && seen[k+PAIRSEP+tk]>1){
       if(flag==='OK') flag='DUPE';
       issues.push({c:'bad',t:'This SKU and title are on '+seen[k+PAIRSEP+tk]+
-        ' orders in the awaiting-shipment queue.'});
+        ' orders in the awaiting-shipment queue'+(need>1?' ('+need+' units wanted)':'')+
+        (liveAvail===0?', and eBay shows none left':'')+'.'});
     } else if(k && seenSku[k]>1){
       if(flag==='OK') flag='SKUREUSE';
       issues.push({c:'warn',t:'This SKU is on '+seenSku[k]+
@@ -36068,7 +36194,7 @@ function drawCard(){
       '</div>'+
       '<div class="oc-acts">'+links.join('')+'</div>'+
       '<div class="oc-issues"><h4>Findings</h4>'+
-        r.issues.map(function(x){return '<div class="oc-issue '+x.c+'">'+esc(x.t)+'</div>'}).join('')+
+        r.issues.map(function(x){return '<div class="oc-issue '+x.c+'">'+esc(x.t)+(x.hist?ocStockHist(x.hist):'')+'</div>'}).join('')+
       '</div>'+
     '</div>';
   var arm=$('ocArm'), can=$('ocCancel');
