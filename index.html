@@ -35718,7 +35718,11 @@ function catalogFromCsv(text){
       cStat=col('status'), cPid=col('productid','product id');
   if(cSku<0) throw new Error('no SKU column — expected "Variant SKU" or "SKU"');
   var cLocs=[];
-  if(cQty<0){
+  // Only Shopify's inventory export has per-location columns. A products
+  // export has other whole-number columns (Variant Grams, Image Position)
+  // that must never be read as stock.
+  var invShaped = head.indexOf('variant sku')<0 && (head.indexOf('coo')>-1 || head.indexOf('hs code')>-1);
+  if(cQty<0 && invShaped){
     // Per-location layout: any header that isn't a known inventory-export
     // field and holds whole numbers is a location's available count.
     var KNOWN=['handle','title','option1 name','option1 value','option2 name','option2 value',
@@ -35731,9 +35735,15 @@ function catalogFromCsv(text){
       if(n && ok===n) cLocs.push(i);
     });
   }
-  if(cQty<0 && !cLocs.length)
-    throw new Error('no stock column — expected "Variant Inventory Qty", "Available" or a location column. Without it every item reads as 0 in stock.');
+  // Shopify now splits the catalog across two exports: the products export
+  // carries Status but no stock, the inventory export carries stock but no
+  // Status. Either is accepted; catalogImport() merges it with whichever
+  // layer is already loaded. A file with neither is useless.
+  var hasQty = cQty>-1 || cLocs.length>0, hasStatus = cStat>-1;
+  if(!hasQty && !hasStatus)
+    throw new Error('no stock or status column — drop the Inventory export (stock) or the Products export (status).');
   function qtyOf(r){
+    if(!hasQty) return 0;
     if(cQty>-1) return parseInt(r[cQty]||'0',10)||0;
     var t=0; cLocs.forEach(function(i){ t+=parseInt(r[i]||'0',10)||0; }); return t;
   }
@@ -35765,12 +35775,42 @@ function catalogFromCsv(text){
               _stat]);                                   // status: active/draft/archived
   }
   if(!out.length) throw new Error('no rows with a SKU');
+  out.hasQty=hasQty; out.hasStatus=hasStatus;
   return out;
 }
+// Older stored catalogs carry no flags; work them out from the rows. A big
+// catalog where not one SKU has stock is the broken pre-fix import, not a
+// store that sold everything.
+function catalogLayers(rec){
+  if(!rec || !rec.rows) return {qty:false, status:false};
+  var rows=rec.rows;
+  var qty = (rec.hasQty!=null) ? rec.hasQty : rows.some(function(r){ return Number(r[3])>0; });
+  var st  = (rec.hasStatus!=null) ? rec.hasStatus : rows.some(function(r){ return String(r[6]||'').trim()!==''; });
+  if(qty && rows.length>1500 && !rows.some(function(r){ return Number(r[3])>0; })) qty=false;
+  return {qty:qty, status:st};
+}
+window.catalogLayers=function(){ return catalogLayers(catalogActive()); };
 
 function catalogImport(text){
   var rows=catalogFromCsv(text);
-  var rec={date:new Date().toISOString().slice(0,10), rows:rows, src:'csv'};
+  var today=new Date().toISOString().slice(0,10);
+  var prev=catalogActive(), pl=catalogLayers(prev);
+  var hasQty=rows.hasQty, hasStatus=rows.hasStatus;
+  var qtyDate=hasQty?today:null, statusDate=hasStatus?today:null;
+  // Fill the missing layer from the one already loaded, matched by SKU.
+  if(prev && ((!hasQty && pl.qty) || (!hasStatus && pl.status))){
+    var byKey={};
+    prev.rows.forEach(function(r){ byKey[String(r[0]).toUpperCase()]=r; });
+    rows.forEach(function(r){
+      var o=byKey[String(r[0]).toUpperCase()]; if(!o) return;
+      if(!hasQty && pl.qty) r[3]=Number(o[3]||0);
+      if(!hasStatus && pl.status) r[6]=o[6]||'';
+    });
+    if(!hasQty && pl.qty){ hasQty=true; qtyDate=prev.qtyDate||prev.date; }
+    if(!hasStatus && pl.status){ hasStatus=true; statusDate=prev.statusDate||prev.date; }
+  }
+  var rec={date:today, rows:rows, src:'csv', hasQty:hasQty, hasStatus:hasStatus,
+           qtyDate:qtyDate, statusDate:statusDate};
   // Hold it in memory FIRST. localStorage can refuse — quota, or a file://
   // origin with storage restricted — and an unguarded throw here used to kill
   // the whole import, silently leaving the stale snapshot in place. The
@@ -36373,13 +36413,14 @@ window.ocCatalogPanel = ocCatalogPanel;
         (imp?' \u00b7 imported CSV \u00b7 '+imp.rows.length+' SKUs'
             :' \u00b7 the list baked into this file')+'</div>'+
       '<ol class="occ-steps">'+
-        '<li>Shopify admin \u2192 <b>Products</b></li>'+
-        '<li>Top right \u2192 <b>Export</b></li>'+
-        '<li>Choose <b>All products</b></li>'+
-        '<li>Format: <b>CSV for Excel, Numbers, or other spreadsheet programs</b></li>'+
-        '<li><b>Export products</b> \u2014 Shopify emails the file if the store is large</li>'+
-        '<li>Drop that CSV below</li>'+
+        '<li><b>Stock:</b> Shopify admin \u2192 Products \u2192 <b>Inventory</b> \u2192 Export \u2192 all \u2192 drop it below</li>'+
+        '<li><b>Status:</b> Shopify admin \u2192 <b>Products</b> \u2192 Export \u2192 All products \u2192 drop it below</li>'+
+        '<li>Either order. Shopify split these into two files \u2014 Nexus merges them by SKU. '+
+        'Phantom Zone needs <b>stock</b>; the \u201cput on eBay\u201d list also needs <b>status</b>.</li>'+
       '</ol>'+
+      (function(){ var L=catalogLayers(imp);
+        return '<div class="occ-now">Loaded now: stock '+(L.qty?'\u2713':'\u2717 missing')+
+               ' \u00b7 status '+(L.status?'\u2713':'\u2717 missing')+'</div>'; })()+
       '<label class="occ-drop" id="occDrop">'+
         '<input type="file" id="occFile" accept=".csv,text/csv" hidden>'+
         '<span>Drop products_export.csv here, or click to choose</span>'+
@@ -36401,8 +36442,10 @@ window.ocCatalogPanel = ocCatalogPanel;
       try{
         var rec=catalogImport(String(fr.result));
         var act=rec.rows.filter(function(r){return String(r[6]||'').toLowerCase()==='active';}).length;
+        var inStock=rec.rows.filter(function(r){return Number(r[3])>0;}).length;
         msg.className='occ-msg ok';
-        msg.textContent='Loaded '+rec.rows.length+' SKUs ('+act+' active).'+
+        msg.textContent='Loaded '+rec.rows.length+' SKUs \u00b7 stock '+(rec.hasQty?'\u2713 ('+inStock+' in stock)':'\u2717 \u2014 now drop the Inventory export')+
+          ' \u00b7 status '+(rec.hasStatus?'\u2713 ('+act+' active)':'\u2717 \u2014 now drop the Products export')+'.'+
           (rec.persisted===false ? '  Note: could not save it for next time ('+(rec.persistError||'storage refused')+') — it works for this session only.' : '');
         // Anything reading the catalog should pick this up immediately.
         if(typeof window.pzRescan==='function') window.pzRescan();
@@ -37433,7 +37476,7 @@ document.addEventListener('click',function(e){
 // Join key is Custom label (SKU), exact, all three. Kill opens Marketplace
 // Connect with the SKU searched (MC_AUTOFILL_REQUEST) — eBay can't end directly.
 (function(){
-  var PZ=[], idx=0, FILTER='all', ended=0, LAST=null;
+  var PZ=[], idx=0, FILTER='all', ended=0, LAST=null, STOP=null;
 
   // ── Decisions already made ──────────────────────────────────────────
   // Every scan rebuilds the list from the reports, so anything judged last
@@ -37583,6 +37626,15 @@ document.addEventListener('click',function(e){
   }
   function scan(){
     if(!LIST_ROWS){ toast('Drop the Active Listings CSV first'); return; }
+    STOP=null;
+    // No stock numbers in the catalog means every SKU reads as 0 and the
+    // whole store looks sold. Refuse to guess.
+    var LY=(typeof window.catalogLayers==='function')?window.catalogLayers():{qty:true,status:true};
+    if(!LY.qty){
+      PZ=[]; idx=0;
+      STOP='The Shopify catalog has no stock numbers. Click <b>Shopify catalog</b> above and drop the <b>Inventory export</b> (Products \u2192 Inventory \u2192 Export).';
+      render(); toast('Catalog has no stock \u2014 drop the Inventory export'); return;
+    }
     var soldByKey={};
     (SOLD_INDEX||[]).forEach(function(r){
       var sku=col(r,['custom label','sku']); if(!sku) return;
@@ -37637,9 +37689,9 @@ document.addEventListener('click',function(e){
     var liveN=LIST_ROWS.filter(function(r){ return Number(col(r,['available quantity','available'])||0)>0; }).length;
     var goneN=PZ.filter(function(p){ return p.kind!=='ghost'; }).length;
     if(liveN>=20 && goneN/liveN>0.5){
-      PZ=[]; idx=0; render();
-      toast('Stopped: '+goneN+' of '+liveN+' live listings read as out of stock. The Shopify catalog\u2019s stock column was not read \u2014 re-import the inventory export.');
-      return;
+      PZ=[]; idx=0;
+      STOP='Stopped: '+goneN+' of '+liveN+' live listings read as out of stock \u2014 that is a bad catalog, not a real sweep. Click <b>Shopify catalog</b> above and re-drop the <b>Inventory export</b>.';
+      render(); toast('Stopped \u2014 catalog stock looks wrong'); return;
     }
     // ── Reverse pass: prepped but never published ──────────────────
     // Everything above walks the eBay listings looking for things that should
@@ -38127,6 +38179,7 @@ document.addEventListener('click',function(e){
 
   function renderWork(){
     var w=$('pzWork');
+    if(STOP){ w.innerHTML='<div class="pz-empty"><div class="big">\u26a0\ufe0f</div><b>Scan not trusted.</b><br>'+STOP+'</div>'; return; }
     if(!PZ.length){ w.innerHTML='<div class="pz-empty"><div class="big">🎉</div><b>All clear.</b><br>Drop the two reports and press Scan to check again.</div>'; return; }
     if(idx>=PZ.length) idx=PZ.length-1;
     var p=PZ[idx], km=KM[p.kind];
@@ -38238,21 +38291,34 @@ document.addEventListener('click',function(e){
     else if(!SOLD_INDEX){ step='2 · Drop the Paid &amp; Shipped report';
       detail='Same place on eBay. It tells us what already sold, so we can spot listings that should be dead.'; tone='wait'; }
     else if(!haveCat){ step='3 · Load the Shopify catalog';
-      detail='Click the Shopify catalog badge above and drop the products export. Without it, real products look like ghosts.'; tone='wait'; }
+      detail='Click the Shopify catalog badge above and drop the Inventory export (stock) and the Products export (status). Without it, real products look like ghosts.'; tone='wait'; }
+    else if(STOP){ step='Scan stopped \u2014 the catalog is wrong';
+      detail='Click the Shopify catalog badge above and drop the Inventory export (Products \u2192 Inventory \u2192 Export).'; tone='wait'; }
     else if(!PZ.length){ step='Nothing to do — you are clear';
       detail='Every live listing has a real unit behind it. Re-scan after the next batch of sales.'; tone='clear'; }
     else {
       var ph=PZ.filter(function(p){return p.kind==='phantom';}).length,
           ck=PZ.filter(function(p){return p.kind==='check';}).length,
-          un=PZ.filter(function(p){return p.kind==='unlisted';}).length;
+          un=PZ.filter(function(p){return p.kind==='unlisted';}).length,
+          ns=PZ.filter(function(p){return p.kind==='nostock';}).length,
+          fx=PZ.filter(function(p){return p.kind==='phantomstock'||p.kind==='mismatch';}).length;
       if(ph){ step='Kill '+ph+' phantom listing'+(ph===1?'':'s');
         detail='These already sold and shipped but are still live on eBay. Pick one on the left, press the red button — it opens Marketplace Connect where you end it. Repeat until the tab reads zero.'; }
       else if(ck){ step='Check '+ck+' item'+(ck===1?'':'s')+' on the shelf';
         detail='These look sold but there is no carrier scan. Walk over, confirm the unit is really gone, then kill the listing.'; }
+      else if(ns){ step='End '+ns+' listing'+(ns===1?'':'s')+' with no stock';
+        detail='Shopify has none left and eBay still sells them \u2014 most likely sold in store. Confirm the shelf, then end in Marketplace Connect.'; }
+      else if(fx){ step='Fix stock on '+fx+' item'+(fx===1?'':'s');
+        detail='Shopify still counts a unit that already left. Correct the quantity in Shopify.'; }
       else if(un){ step='Launch '+un+' listing'+(un===1?'':'s');
         detail='These are prepped in Shopify with stock but never went live on eBay. Green button opens Marketplace Connect to publish them.'; }
       else { step='Review the remaining items'; detail='Work through what is left on the left-hand list.'; }
     }
+    // The "put on eBay" list needs product status, which only the Products
+    // export carries. Say so instead of silently showing zero.
+    var LY=(typeof window.catalogLayers==='function')?window.catalogLayers():{status:true};
+    if(haveCat && !STOP && !LY.status)
+      detail+=' <i>\u201cPut on eBay\u201d is off: drop the Products export on the Shopify catalog badge so Nexus knows which items are active.</i>';
     g.className='pz-guide '+tone;
     g.innerHTML='<b>'+step+'</b><span>'+detail+'</span>';
   }
