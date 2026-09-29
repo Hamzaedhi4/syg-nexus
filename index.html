@@ -35649,18 +35649,15 @@ function r_ordNorm(v){ return String(v||'').replace(/[^0-9]/g,''); }
 // rather than a direct one. Everything else — SKU, title, type, qty, price —
 // comes through exactly.
 var SYG_CAT_KEY='abribook:catalogImport';
+// The catalog is NOT saved any more. A saved copy outlived the Shopify
+// export change and silently fed every scan 0 stock. It now lives in memory
+// for this page load only; drop the exports again after a reload. Any copy
+// left in this browser by older versions is deleted on load.
+try{ localStorage.removeItem(SYG_CAT_KEY); }catch(e){}
 
 function catalogActive(){
-  // Memory wins: it reflects this session's import even when storage refused.
   if(window.__sygCatalog && window.__sygCatalog.rows && window.__sygCatalog.rows.length)
     return window.__sygCatalog;
-  try{
-    var raw=localStorage.getItem(SYG_CAT_KEY);
-    if(raw){
-      var o=JSON.parse(raw);
-      if(o && o.rows && o.rows.length) return o;
-    }
-  }catch(e){}
   return null;   // fall back to the baked-in SYGCC_SNAP
 }
 function catalogRows(){
@@ -35811,22 +35808,13 @@ function catalogImport(text){
   }
   var rec={date:today, rows:rows, src:'csv', hasQty:hasQty, hasStatus:hasStatus,
            qtyDate:qtyDate, statusDate:statusDate};
-  // Hold it in memory FIRST. localStorage can refuse — quota, or a file://
-  // origin with storage restricted — and an unguarded throw here used to kill
-  // the whole import, silently leaving the stale snapshot in place. The
-  // catalog works for this session either way; persistence is a bonus.
+  // Memory only — never written to localStorage (see catalogActive).
   window.__sygCatalog = rec;
-  try{
-    localStorage.setItem(SYG_CAT_KEY, JSON.stringify(rec));
-    rec.persisted = true;
-  }catch(e){
-    rec.persisted = false;
-    rec.persistError = String(e && e.message ? e.message : e);
-  }
   return rec;
 }
 function catalogReset(){
-  localStorage.removeItem(SYG_CAT_KEY);
+  window.__sygCatalog = null;
+  try{ localStorage.removeItem(SYG_CAT_KEY); }catch(e){}
 }
 
 // ── Catalog snapshot age ──────────────────────────────────────────────
@@ -36423,13 +36411,12 @@ window.ocCatalogPanel = ocCatalogPanel;
                ' \u00b7 status '+(L.status?'\u2713':'\u2717 missing')+'</div>'; })()+
       '<label class="occ-drop" id="occDrop">'+
         '<input type="file" id="occFile" accept=".csv,text/csv" hidden>'+
-        '<span>Drop products_export.csv here, or click to choose</span>'+
+        '<span>Drop the Inventory export or the Products export here, or click to choose</span>'+
       '</label>'+
       '<div class="occ-msg" id="occMsg"></div>'+
       '<div class="occ-foot">'+
         (imp?'<button type="button" id="occReset">Revert to the built-in list</button>':'')+
-        '<span class="occ-note">Stored in this browser only. The HTML file is not modified, '+
-        'so a git pull will not wipe it \u2014 and it will not follow you to another machine.</span>'+
+        '<span class="occ-note">Not saved. It lasts until you reload the page \u2014 drop the exports again after a reload.</span>'+
       '</div>'+
     '</div>';
   w.classList.add('on');
@@ -36446,7 +36433,7 @@ window.ocCatalogPanel = ocCatalogPanel;
         msg.className='occ-msg ok';
         msg.textContent='Loaded '+rec.rows.length+' SKUs \u00b7 stock '+(rec.hasQty?'\u2713 ('+inStock+' in stock)':'\u2717 \u2014 now drop the Inventory export')+
           ' \u00b7 status '+(rec.hasStatus?'\u2713 ('+act+' active)':'\u2717 \u2014 now drop the Products export')+'.'+
-          (rec.persisted===false ? '  Note: could not save it for next time ('+(rec.persistError||'storage refused')+') — it works for this session only.' : '');
+          '  Not saved \u2014 lasts until you reload.';
         // Anything reading the catalog should pick this up immediately.
         if(typeof window.pzRescan==='function') window.pzRescan();
         var a=document.getElementById('ocSnapAge');
@@ -38180,6 +38167,7 @@ document.addEventListener('click',function(e){
   function renderWork(){
     var w=$('pzWork');
     if(STOP){ w.innerHTML='<div class="pz-empty"><div class="big">\u26a0\ufe0f</div><b>Scan not trusted.</b><br>'+STOP+'</div>'; return; }
+    if(!PZ.length && !LIST_ROWS){ w.innerHTML='<div class="pz-empty"><b>Nothing scanned yet.</b><br>Drop the Active Listings and Paid &amp; Shipped reports, then press Scan.</div>'; return; }
     if(!PZ.length){ w.innerHTML='<div class="pz-empty"><div class="big">🎉</div><b>All clear.</b><br>Drop the two reports and press Scan to check again.</div>'; return; }
     if(idx>=PZ.length) idx=PZ.length-1;
     var p=PZ[idx], km=KM[p.kind];
@@ -38412,6 +38400,16 @@ document.addEventListener('click',function(e){
     fr.readAsText(f);
   }
 
+  // A catalog with no stock numbers must never look "loaded" — that green
+  // badge is what hid the broken pre-update import.
+  function pzBadgeLayers(){
+    var cb=$('pzCatBadge'), info=$('pzCatInfo');
+    if(!cb || typeof window.catalogLayers!=='function') return;
+    var L=window.catalogLayers();
+    if(!L.qty){ cb.classList.remove('loaded'); cb.style.borderColor='var(--nx-bad)';
+      if(info){ info.style.color='var(--nx-bad)'; info.textContent='NO STOCK \u2014 click, drop Inventory export'; } }
+    else if(!L.status && info){ info.textContent+=' \u00b7 no status'; }
+  }
   // Called by the catalog panel the moment a new CSV lands, so the list
   // reflects the fresh catalog without anyone remembering to press Scan.
   window.pzRescan=function(){
@@ -38420,6 +38418,7 @@ document.addEventListener('click',function(e){
       var info=document.getElementById('pzCatInfo');
       if(info) info.textContent=window.snapLabel();
       cb.classList.add('loaded'); cb.style.borderColor=''; if(info) info.style.color='';
+      pzBadgeLayers();
     }
     if(LIST_ROWS) scan();
   };
@@ -38482,6 +38481,7 @@ document.addEventListener('click',function(e){
           if(/fallback|baked/.test(use.src)){ cb.style.borderColor='var(--nx-warn)'; if(info){info.style.color='var(--nx-warn)'; info.textContent=use.rows.length+' SKUs — old built-in list, import a fresh one';} }
           if(typeof window.snapStale==='function' && window.snapStale()){ cb.classList.remove('loaded'); cb.style.borderColor='var(--nx-warn)'; info.style.color='var(--nx-warn)'; }
           else { cb.classList.add('loaded'); }
+          pzBadgeLayers();
         }catch(e){ $('pzCatInfo').textContent='catalog loaded'; }
       }
       [['pzDropList','list'],['pzDropSold','sold']].forEach(function(pair){
