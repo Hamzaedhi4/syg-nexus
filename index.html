@@ -4821,8 +4821,8 @@ html.sl-on #wbDetails{z-index:16100 !important}
       <b>Active Listings</b><small id="pzListInfo">drop CSV</small><input type="file" accept=".csv" hidden></label>
     <label class="pz-src" id="pzDropSold" data-tip="Your eBay Paid &amp; Shipped export. If a live listing is in here, it already sold.">
       <b>Paid &amp; Shipped</b><small id="pzSoldInfo">drop CSV</small><input type="file" accept=".csv" hidden></label>
-    <label class="pz-src" id="pzCatBadge" data-tip="The Shopify product list SKUs are matched against. If it is stale, real products look like ghosts. Click to refresh.">
-      <b>Shopify catalog</b><small id="pzCatInfo">checking&hellip;</small></label>
+    <label class="pz-src" id="pzCatBadge" data-tip="Shopify admin &rarr; Products &rarr; Inventory &rarr; Export. Drop that CSV here.">
+      <b>Shopify inventory</b><small id="pzCatInfo">drop CSV</small><input type="file" accept=".csv" hidden></label>
   </div>
 
   <!-- What to do: four actions, each a target you can click into -->
@@ -36381,6 +36381,7 @@ function ocHandoffPrompt(list){
 // someone where the export button is, then leaving them to hand-edit a 182KB
 // array, is why the catalog went seven days stale in the first place.
 window.ocCatalogPanel = ocCatalogPanel;
+window.catalogImport = catalogImport;
   // Read from other script blocks (Phantom Zone). Without these exports
   // `typeof catalogRows` was 'undefined' over there and it silently fell back
   // to the baked 1,404-row snapshot — so a freshly imported 10,000-SKU catalog
@@ -37619,7 +37620,7 @@ document.addEventListener('click',function(e){
     var LY=(typeof window.catalogLayers==='function')?window.catalogLayers():{qty:true,status:true};
     if(!LY.qty){
       PZ=[]; idx=0;
-      STOP='The Shopify catalog has no stock numbers. Click <b>Shopify catalog</b> above and drop the <b>Inventory export</b> (Products \u2192 Inventory \u2192 Export).';
+      STOP='Drop the Shopify inventory export on the <b>Shopify inventory</b> box above (Shopify admin \u2192 Products \u2192 Inventory \u2192 Export).';
       render(); toast('Catalog has no stock \u2014 drop the Inventory export'); return;
     }
     var soldByKey={};
@@ -37677,7 +37678,7 @@ document.addEventListener('click',function(e){
     var goneN=PZ.filter(function(p){ return p.kind!=='ghost'; }).length;
     if(liveN>=20 && goneN/liveN>0.5){
       PZ=[]; idx=0;
-      STOP='Stopped: '+goneN+' of '+liveN+' live listings read as out of stock \u2014 that is a bad catalog, not a real sweep. Click <b>Shopify catalog</b> above and re-drop the <b>Inventory export</b>.';
+      STOP='Stopped: '+goneN+' of '+liveN+' live listings read as out of stock \u2014 that is a bad catalog, not a real sweep. Re-drop the inventory export on the <b>Shopify inventory</b> box above.';
       render(); toast('Stopped \u2014 catalog stock looks wrong'); return;
     }
     // ── Reverse pass: prepped but never published ──────────────────
@@ -37747,9 +37748,9 @@ document.addEventListener('click',function(e){
       }
       // created date is optional in the catalog layer; when absent we cannot
       // apply the 60-day rule, so say so rather than silently including it.
-      // No status in the catalog (Shopify's inventory export has none) means
-      // archived stock is indistinguishable from active — don't guess.
-      if(!st) return;
+      // No status (inventory export only): still list recent items, marked
+      // "status unknown" — the SKU recency rule below keeps old holdbacks out,
+      // and dropping the Products export removes drafts/archived.
       // row[6] is status; a created date, when a catalog carries one, is row[7].
       var made=row[7]?Date.parse(row[7]):NaN;
       var ageTxt, recent;
@@ -37763,7 +37764,7 @@ document.addEventListener('click',function(e){
       if(!recent) return;
       PZ.push({sku:sku, name:row[1]||sku, spec:'', price:Number(row[4]||0), kind:'unlisted', type:row[2]||'',
         why:'Active in Shopify with stock, not live on eBay',
-        shop:'active · '+qty+' in stock'+(ageTxt?' · '+ageTxt:''),
+        shop:(st?'active \u00b7 ':'')+qty+' in stock'+(ageTxt?' · '+ageTxt:''),
         ebay:'not listed', avail:'no eBay listing found',
         sold:'n/a — never listed'});
     });
@@ -37786,7 +37787,7 @@ document.addEventListener('click',function(e){
           mismatch:{tag:'SHOPIFY STATUS IS WRONG',grp:'Listed, but not active in Shopify',
             verd:'<b>The unit is probably still here.</b> It is live on eBay and Shopify shows stock \u2014 but the product is not set to active, so it is out of sync. Nothing sold. Set the status right rather than ending the listing.'},
           unlisted:{tag:'READY TO SELL',grp:'Sitting here, never put on eBay',verd:'<b>This is sitting here doing nothing.</b> Shopify has it in stock and nothing has sold it, but it was never put on eBay. Put it up and it can start selling.'},
-          ghost:{tag:'NOT IN SHOPIFY',grp:'This SKU is not in Shopify',verd:'<b>No Shopify match.</b> This SKU isn\'t in the loaded catalog. If lots of items show this, the catalog is stale — click the Shopify catalog badge up top to refresh it. If the catalog is current, it\'s a real SKU typo or a deleted product.'}};
+          ghost:{tag:'NOT IN SHOPIFY',grp:'This SKU is not in Shopify',verd:'<b>No Shopify match.</b> This SKU isn\'t in the loaded catalog. If lots of items show this, the catalog is stale — drop a fresh inventory export on the Shopify inventory box up top to refresh it. If the catalog is current, it\'s a real SKU typo or a deleted product.'}};
   var QUERY='', TYPE='';
   // Tabs group by ACTION, not by diagnosis. Seven verdicts share four actions,
   // and eight tabs did not fit the column — labels wrapped and clipped. The
@@ -38312,9 +38313,9 @@ document.addEventListener('click',function(e){
     else if(!SOLD_INDEX){ step='2 · Drop the Paid &amp; Shipped report';
       detail='Same place on eBay. It tells us what already sold, so we can spot listings that should be dead.'; tone='wait'; }
     else if(!haveCat){ step='3 · Load the Shopify catalog';
-      detail='Click the Shopify catalog badge above and drop the Inventory export (stock) and the Products export (status). Without it, real products look like ghosts.'; tone='wait'; }
+      detail='Shopify admin \u2192 Products \u2192 Inventory \u2192 Export, then drop that CSV on the Shopify inventory box above.'; tone='wait'; }
     else if(STOP){ step='Scan stopped \u2014 the catalog is wrong';
-      detail='Click the Shopify catalog badge above and drop the Inventory export (Products \u2192 Inventory \u2192 Export).'; tone='wait'; }
+      detail='Re-drop the inventory export on the Shopify inventory box above.'; tone='wait'; }
     else if(!PZ.length){ step='Nothing to do — you are clear';
       detail='Every live listing has a real unit behind it. Re-scan after the next batch of sales.'; tone='clear'; }
     else {
@@ -38338,8 +38339,7 @@ document.addEventListener('click',function(e){
     // The "put on eBay" list needs product status, which only the Products
     // export carries. Say so instead of silently showing zero.
     var LY=(typeof window.catalogLayers==='function')?window.catalogLayers():{status:true};
-    if(haveCat && !STOP && !LY.status)
-      detail+=' <i>\u201cPut on eBay\u201d is off: drop the Products export on the Shopify catalog badge so Nexus knows which items are active.</i>';
+
     g.className='pz-guide '+tone;
     g.innerHTML='<b>'+step+'</b><span>'+detail+'</span>';
   }
@@ -38433,6 +38433,21 @@ document.addEventListener('click',function(e){
     fr.readAsText(f);
   }
 
+  function loadCatalog(f){
+    if(!f) return;
+    var fr=new FileReader();
+    fr.onload=function(){
+      try{
+        var rec=(window.catalogImport||catalogImport)(String(fr.result));
+        var n=rec.rows.filter(function(r){return Number(r[3])>0;}).length;
+        $('pzCatBadge').classList.add('loaded'); $('pzCatBadge').style.borderColor='';
+        $('pzCatInfo').style.color=''; $('pzCatInfo').textContent=rec.rows.length+' SKUs \u00b7 '+n+' in stock';
+        pzBadgeLayers();
+        if(LIST_ROWS) scan(); else render();
+      }catch(e){ $('pzCatInfo').style.color='var(--nx-bad)'; $('pzCatInfo').textContent='wrong file \u2014 '+e.message; toast('Could not read that file: '+e.message); }
+    };
+    fr.readAsText(f);
+  }
   // A catalog with no stock numbers must never look "loaded" — that green
   // badge is what hid the broken pre-update import.
   function pzBadgeLayers(){
@@ -38440,8 +38455,7 @@ document.addEventListener('click',function(e){
     if(!cb || typeof window.catalogLayers!=='function') return;
     var L=window.catalogLayers();
     if(!L.qty){ cb.classList.remove('loaded'); cb.style.borderColor='var(--nx-bad)';
-      if(info){ info.style.color='var(--nx-bad)'; info.textContent='NO STOCK \u2014 click, drop Inventory export'; } }
-    else if(!L.status && info){ info.textContent+=' \u00b7 no status'; }
+      if(info){ info.style.color='var(--nx-bad)'; info.textContent='drop CSV'; } }
   }
   // Called by the catalog panel the moment a new CSV lands, so the list
   // reflects the fresh catalog without anyone remembering to press Scan.
@@ -38506,7 +38520,11 @@ document.addEventListener('click',function(e){
       });
       var cb=$('pzCatBadge');
       if(cb){
-        cb.addEventListener('click',function(){ if(typeof window.ocCatalogPanel==='function') window.ocCatalogPanel(); else toast('Catalog refresh lives on the Order Check screen'); });
+        var cin=cb.querySelector('input');
+        if(cin) cin.addEventListener('change',function(){ loadCatalog(this.files&&this.files[0]); this.value=''; });
+        ['dragover','dragenter'].forEach(function(ev){ cb.addEventListener(ev,function(e){e.preventDefault();cb.style.borderColor='var(--nx-blue)';}); });
+        ['dragleave','drop'].forEach(function(ev){ cb.addEventListener(ev,function(e){e.preventDefault();cb.style.borderColor='';}); });
+        cb.addEventListener('drop',function(e){ loadCatalog(e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0]); });
         try{
           var info=$('pzCatInfo');
           var use=catalogInUse();
