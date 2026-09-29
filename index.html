@@ -37692,6 +37692,34 @@ document.addEventListener('click',function(e){
     LIST_ROWS.forEach(function(r){ var k=skuKey(col(r,['custom label','sku'])); if(k) liveKeys[k]=1; });
     var cat=(typeof window.catalogRows==='function')?window.catalogRows():(window.SYGCatalog||[]);
     var CUTOFF=60*86400000, now=Date.now();
+    // ── Recency without a created date ──────────────────────────────
+    // Neither Shopify export carries a created date, so "recent" is read off
+    // the SKU. Two signals, both SYG conventions:
+    //   · a date token — "-0926" suffix or "RTL0926"
+    //   · the 5-digit intake number (NJ02-<price>-<intake>-…), which only
+    //     ever goes up as units come in
+    // The intake cutoff is calibrated from this catalog: the SKUs dated in
+    // the last 60 days tell us which intake numbers are that recent. The 5th
+    // percentile is used, not the minimum, because a relist can carry an old
+    // intake number under a new date suffix. Checked against live Shopify
+    // created dates: every recent unlisted item passed, no 60-day-old one did.
+    function skuDate(sku){
+      var t=String(sku||'').trim(), m=t.match(/RTL(\d{2})(\d{2})/i) || t.match(/[-\s](\d{2})(\d{2})$/);
+      if(!m) return null;
+      var mo=+m[1], d=+m[2]; if(mo<1||mo>12||d<1||d>31) return null;
+      var y=new Date(now).getFullYear(), x=new Date(y,mo-1,d).getTime();
+      if(x>now+86400000) x=new Date(y-1,mo-1,d).getTime();
+      return x;
+    }
+    function skuIntake(sku){
+      var t=String(sku||'').trim(), m=t.match(/^NJ0\d-[\d.]+-(\d{5})(?!\d)/i) || t.match(/^NJ0\d-(\d{5})(?!\d)/i);
+      return m? +m[1] : null;
+    }
+    var calib=[];
+    cat.forEach(function(r){ var d=skuDate(r[0]), n=skuIntake(r[0]);
+      if(d!=null && n!=null && now-d<=CUTOFF) calib.push(n); });
+    calib.sort(function(a,b){return a-b;});
+    var INTAKE_MIN = calib.length>=10 ? calib[Math.floor(calib.length*0.05)] : null;
     cat.forEach(function(row){
       var sku=row[0]; if(!sku) return;
       var k=skuKey(sku); if(!k || liveKeys[k]) return;      // already live on eBay
@@ -37725,7 +37753,12 @@ document.addEventListener('click',function(e){
       // row[6] is status; a created date, when a catalog carries one, is row[7].
       var made=row[7]?Date.parse(row[7]):NaN;
       var ageTxt, recent;
-      if(isNaN(made)){ ageTxt='age unknown'; recent=true; }
+      if(isNaN(made)){
+        var sd=skuDate(sku), sn=skuIntake(sku);
+        if(sd!=null && now-sd<=CUTOFF){ var dd=Math.floor((now-sd)/86400000); ageTxt='SKU dated '+dd+' day'+(dd===1?'':'s')+' ago'; recent=true; }
+        else if(sn!=null && INTAKE_MIN!=null && sn>=INTAKE_MIN){ ageTxt='recent intake #'+sn; recent=true; }
+        else recent=false;          // old, or no way to tell — holdbacks stay out
+      }
       else { var days=Math.floor((now-made)/86400000); if((now-made)>CUTOFF) return; ageTxt='added '+days+' day'+(days===1?'':'s')+' ago'; recent=true; }
       if(!recent) return;
       PZ.push({sku:sku, name:row[1]||sku, spec:'', price:Number(row[4]||0), kind:'unlisted', type:row[2]||'',
