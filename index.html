@@ -4817,12 +4817,12 @@ html.sl-on #wbDetails{z-index:16100 !important}
   <div class="pz-srcbar">
     <button class="pz-scan" id="pzScan" data-tip="Re-checks the reports against the Shopify catalog and rebuilds the list.">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>Scan</button>
-    <label class="pz-src" id="pzDropList" data-tip="Your eBay Active Listings export \u2014 everything currently live on eBay.">
+    <label class="pz-src" id="pzDropList" data-tip="Your eBay Active Listings export &mdash; everything currently live on eBay.">
       <b>Active Listings</b><small id="pzListInfo">drop CSV</small><input type="file" accept=".csv" hidden></label>
     <label class="pz-src" id="pzDropSold" data-tip="Your eBay Paid &amp; Shipped export. If a live listing is in here, it already sold.">
       <b>Paid &amp; Shipped</b><small id="pzSoldInfo">drop CSV</small><input type="file" accept=".csv" hidden></label>
     <label class="pz-src" id="pzCatBadge" data-tip="The Shopify product list SKUs are matched against. If it is stale, real products look like ghosts. Click to refresh.">
-      <b>Shopify catalog</b><small id="pzCatInfo">checking\u2026</small></label>
+      <b>Shopify catalog</b><small id="pzCatInfo">checking&hellip;</small></label>
   </div>
 
   <!-- What to do: four actions, each a target you can click into -->
@@ -4833,7 +4833,7 @@ html.sl-on #wbDetails{z-index:16100 !important}
       data-tip="Already sold or out of stock, but still buyable on eBay. End these before someone buys what you cannot ship.">
       <b id="pzTEnd">0</b><span>end the listing</span><i id="pzVEnd"></i></button>
     <button class="pz-actcard a-fix" data-f="act:fix"
-      data-tip="The listing is fine \u2014 Shopify is wrong. Quantity never came down, or the product is draft while listed.">
+      data-tip="The listing is fine &mdash; Shopify is wrong. Quantity never came down, or the product is draft while listed.">
       <b id="pzTFix">0</b><span>fix stock</span><i id="pzVFix"></i></button>
     <button class="pz-actcard a-list" data-f="act:list"
       data-tip="In stock and never put on eBay. Money sitting on a shelf.">
@@ -4848,12 +4848,12 @@ html.sl-on #wbDetails{z-index:16100 !important}
   <div class="pz-body">
     <div class="pz-col pz-leftcol">
       <div class="pz-listhd">
-        <input id="pzSearch" placeholder="Filter by SKU or title\u2026" autocomplete="off">
+        <input id="pzSearch" placeholder="Filter by SKU or title&hellip;" autocomplete="off">
         <select id="pzType" data-tip="Narrow to one product type."><option value="">All types</option></select>
-        <button type="button" id="pzViewSw" class="pz-viewsw" data-tip="Group by the date on the end of the SKU \u2014 the suffix Bulk activation uses.">Batches</button>
+        <button type="button" id="pzViewSw" class="pz-viewsw" data-tip="Group by the date on the end of the SKU &mdash; the suffix Bulk activation uses.">Batches</button>
       </div>
       <div class="pz-list" id="pzList"></div>
-      <div class="pz-kb">J / K move &nbsp;\u00b7&nbsp; X confirm + clear &nbsp;\u00b7&nbsp; U undo</div>
+      <div class="pz-kb">J / K move &nbsp;&middot;&nbsp; X confirm + clear &nbsp;&middot;&nbsp; U undo</div>
     </div>
     <div class="pz-col"><div class="pz-work" id="pzWork"></div></div>
   </div>
@@ -35693,8 +35693,8 @@ function csvParse(text){
 function catalogFromCsv(text){
   var rows=csvParse(text);
   if(!rows.length) throw new Error('empty file');
-  var head=rows[0].map(function(h){ return h.trim().toLowerCase(); });
-  function col(){ 
+  var head=rows[0].map(function(h){ return h.replace(/^\uFEFF/,'').trim().toLowerCase(); });
+  function col(){
     for(var a=0;a<arguments.length;a++){
       var i=head.indexOf(arguments[a]);
       if(i>-1) return i;
@@ -35705,10 +35705,42 @@ function catalogFromCsv(text){
   // Inventory Qty"...) or an already-trimmed catalog ("SKU", "Qty"...). The
   // trimmed one was silently rejected before, which left the old snapshot in
   // place and made every real product look like a ghost.
+  // Stock column. Shopify's newer inventory export (Products → Inventory →
+  // Export) has no "Variant Inventory Qty" — it names the numbers
+  // "Available (not editable)" / "On hand (current)", or, in the
+  // "available only" variant, one column per location ("SYG Elmwood").
+  // Missing that used to read every SKU as qty 0, so every live eBay listing
+  // looked sold out and Phantom Zone flagged the whole store. Available wins
+  // over On hand: a committed (sold, unshipped) unit is already gone.
   var cSku=col('variant sku','sku'), cTitle=col('title'), cType=col('type','product category'),
-      cQty=col('variant inventory qty','qty'), cPrice=col('variant price','price'),
+      cQty=col('variant inventory qty','qty','available (not editable)','available','on hand (current)','on hand'),
+      cPrice=col('variant price','price'),
       cStat=col('status'), cPid=col('productid','product id');
   if(cSku<0) throw new Error('no SKU column — expected "Variant SKU" or "SKU"');
+  var cLocs=[];
+  if(cQty<0){
+    // Per-location layout: any header that isn't a known inventory-export
+    // field and holds whole numbers is a location's available count.
+    var KNOWN=['handle','title','option1 name','option1 value','option2 name','option2 value',
+      'option3 name','option3 value','sku','hs code','coo','location','bin name',
+      'variant packed length','variant packed width','variant packed height','variant packed dimension unit'];
+    head.forEach(function(h,i){
+      if(!h || KNOWN.indexOf(h)>-1 || /\(not editable\)|\(new\)/.test(h)) return;
+      var n=0, ok=0;
+      for(var s=1;s<rows.length && n<200;s++){ var v=String(rows[s][i]||'').trim(); if(v===''){continue;} n++; if(/^-?\d+$/.test(v)) ok++; }
+      if(n && ok===n) cLocs.push(i);
+    });
+  }
+  if(cQty<0 && !cLocs.length)
+    throw new Error('no stock column — expected "Variant Inventory Qty", "Available" or a location column. Without it every item reads as 0 in stock.');
+  function qtyOf(r){
+    if(cQty>-1) return parseInt(r[cQty]||'0',10)||0;
+    var t=0; cLocs.forEach(function(i){ t+=parseInt(r[i]||'0',10)||0; }); return t;
+  }
+  // The inventory export lists one row per variant, and a SKU used on two
+  // products (a relist next to its archived original) must count the stock
+  // on both — "first row wins" read the archived 0 and hid the live unit.
+  var sumDupes = cQty<0 || /available|on hand/.test(head[cQty]);
 
   // A Shopify export repeats the product title only on the first variant row
   // and leaves it blank on the rest, so carry it down.
@@ -35720,11 +35752,14 @@ function catalogFromCsv(text){
     var sku=((cSku>-1?r[cSku]:'')||'').trim();
     if(!sku) continue;                      // variants with no SKU cannot be matched
     var key=sku.toUpperCase();
-    if(seen[key]) continue;                 // first variant wins, same as the old array
-    seen[key]=1;
+    if(seen[key]){                          // first variant wins, same as the old array
+      if(sumDupes) out[seen[key]-1][3]+=qtyOf(r);   // …but stock adds up
+      continue;
+    }
     var _stat=(cStat>-1?String(r[cStat]||'').trim():'');
+    seen[key]=out.length+1;
     out.push([sku, lastTitle, lastType,
-              parseInt((cQty>-1?r[cQty]:'0')||'0',10)||0,
+              qtyOf(r),
               parseFloat((cPrice>-1?r[cPrice]:'0')||'0')||0,
               (cPid>-1?String(r[cPid]||'').trim():''),   // product id when present
               _stat]);                                   // status: active/draft/archived
@@ -37533,17 +37568,18 @@ document.addEventListener('click',function(e){
     }
     return {rows:(window.SYGCatalog||[]), src:'baked snapshot (fallback)'};
   }
+  var CAT_IX=null, CAT_IX_SRC=null;
   function shopStatus(sku){
     var cat=(typeof window.catalogRows==='function')?window.catalogRows():(window.SYGCatalog||[]);
     var key=skuKey(sku);
-    for(var i=0;i<cat.length;i++){
-      if(skuKey(cat[i][0])===key){
-        // snapshot rows are [sku,title,type,qty,price,pid]; qty at index 3
-        return {found:true, qty:Number(cat[i][3]||0), title:cat[i][1], price:cat[i][4],
-                pid:cat[i][5], status:String(cat[i][6]||'').toLowerCase(), type:cat[i][2]||''};
-      }
-    }
-    return {found:false};
+    // Index once per catalog instead of walking 10k rows for every listing.
+    if(CAT_IX_SRC!==cat){ CAT_IX={}; CAT_IX_SRC=cat;
+      for(var j=0;j<cat.length;j++){ var kk=skuKey(cat[j][0]); if(kk && !(kk in CAT_IX)) CAT_IX[kk]=j; } }
+    var i=CAT_IX[key];
+    if(i==null) return {found:false};
+    // snapshot rows are [sku,title,type,qty,price,pid,status]; qty at index 3
+    return {found:true, qty:Number(cat[i][3]||0), title:cat[i][1], price:cat[i][4],
+            pid:cat[i][5], status:String(cat[i][6]||'').toLowerCase(), type:cat[i][2]||''};
   }
   function scan(){
     if(!LIST_ROWS){ toast('Drop the Active Listings CSV first'); return; }
@@ -37594,6 +37630,17 @@ document.addEventListener('click',function(e){
         ebay:'live · $'+price, avail:avail+(avail>1?' — eBay says '+avail+' left':' — eBay still buyable'),
         sold: sold ? ((/\d/.test(sold.track||'')?'shipped · tracking '+sold.track:'on report · NO tracking')+(sold.when?' · '+sold.when:'')) : 'not on report'});
     });
+    // ── Sanity check ────────────────────────────────────────────────
+    // A real sweep flags a few percent of the store. If most live listings
+    // read as "gone", the catalog's stock column wasn't read (every qty 0) —
+    // showing that list would send someone to end the whole store.
+    var liveN=LIST_ROWS.filter(function(r){ return Number(col(r,['available quantity','available'])||0)>0; }).length;
+    var goneN=PZ.filter(function(p){ return p.kind!=='ghost'; }).length;
+    if(liveN>=20 && goneN/liveN>0.5){
+      PZ=[]; idx=0; render();
+      toast('Stopped: '+goneN+' of '+liveN+' live listings read as out of stock. The Shopify catalog\u2019s stock column was not read \u2014 re-import the inventory export.');
+      return;
+    }
     // ── Reverse pass: prepped but never published ──────────────────
     // Everything above walks the eBay listings looking for things that should
     // be dead. This walks Shopify looking for the opposite — a product that is
@@ -37633,7 +37680,11 @@ document.addEventListener('click',function(e){
       }
       // created date is optional in the catalog layer; when absent we cannot
       // apply the 60-day rule, so say so rather than silently including it.
-      var made=row[6]?Date.parse(row[6]):NaN;
+      // No status in the catalog (Shopify's inventory export has none) means
+      // archived stock is indistinguishable from active — don't guess.
+      if(!st) return;
+      // row[6] is status; a created date, when a catalog carries one, is row[7].
+      var made=row[7]?Date.parse(row[7]):NaN;
       var ageTxt, recent;
       if(isNaN(made)){ ageTxt='age unknown'; recent=true; }
       else { var days=Math.floor((now-made)/86400000); if((now-made)>CUTOFF) return; ageTxt='added '+days+' day'+(days===1?'':'s')+' ago'; recent=true; }
